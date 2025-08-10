@@ -8,6 +8,29 @@ import { TypewriterHero } from '@/components/layout/typewriter-hero';
 import { getCourseData } from '@/lib/course-actions';
 import { Button } from '@/components/ui/button';
 
+function getYouTubeThumbnail(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let videoId: string | null = null;
+    
+    if (urlObj.hostname === 'youtu.be') {
+      videoId = urlObj.pathname.slice(1);
+    } else if (urlObj.hostname === 'www.youtube.com' || urlObj.hostname === 'youtube.com') {
+      videoId = urlObj.searchParams.get('v');
+    }
+    
+    if (videoId) {
+      return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+  } catch (error) {
+    console.error("Invalid video URL:", url, error);
+  }
+  
+  // Return a default placeholder if URL is invalid or video ID can't be extracted
+  return `https://placehold.co/600x400.png`;
+}
+
+
 export default async function Home() {
   const allCourseData = await getCourseData();
   
@@ -65,7 +88,7 @@ export default async function Home() {
                    <CardHeader className="p-0">
                      <a href={video.url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video">
                         <img
-                          src={`https://placehold.co/600x400.png`}
+                          src={getYouTubeThumbnail(video.url)}
                           alt={video.title}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                           data-ai-hint="math lesson"
