@@ -78,13 +78,13 @@ export default async function Home() {
     <>
       <section className="relative overflow-hidden min-h-[60vh] md:min-h-[70vh] flex items-center justify-center">
         <StarryBackground />
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="text-white">
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center">
+          <div className="text-white text-center md:text-left">
             <TypewriterHero />
           </div>
-        </div>
-        <div className="absolute bottom-0 left-0 z-0">
-          <HeroAnimation className="w-full max-w-xl h-auto opacity-80" />
+          <div className="hidden md:flex justify-end items-end h-full">
+            <HeroAnimation className="w-full max-w-sm h-auto opacity-90" />
+          </div>
         </div>
       </section>
 
