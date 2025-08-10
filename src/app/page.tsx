@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import { grades } from '@/lib/data';
 import { HeroAnimation } from '@/components/layout/hero-animation';
+import { TypewriterHero } from '@/components/layout/typewriter-hero';
 
 export default function Home() {
   return (
@@ -12,12 +13,7 @@ export default function Home() {
         <HeroAnimation className="absolute z-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/50 z-10"></div>
         <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
-            Berkan Matematik
-          </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto">
-            Matematikte başarının adresi. 5, 6, 7. sınıf ve LGS hazırlık öğrencileri için özel olarak hazırlanmış video dersler, dökümanlar ve interaktif uygulamalar.
-          </p>
+          <TypewriterHero />
         </div>
       </section>
 
