@@ -5,8 +5,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CourseData, GradeSlug, Resource, ResourceCategory } from '@/lib/data';
 import { grades } from '@/lib/data';
-import { addResource, deleteResource, updateResource, getCourseData } from '@/lib/course-actions';
+import { getCourseData } from '@/lib/course-actions';
 import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, getDoc, collection, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +34,9 @@ type EditableResource = {
   url: string;
 }
 
+const COURSE_COLLECTION = 'courseData';
+const SINGLE_DOCUMENT_ID = 'allGrades';
+
 export function AdminClient({ initialData }: AdminClientProps) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -50,7 +55,6 @@ export function AdminClient({ initialData }: AdminClientProps) {
   };
   
   useEffect(() => {
-    // Initial auth check
     if (!authLoading) {
       if (!user) {
         router.push('/login');
@@ -61,44 +65,79 @@ export function AdminClient({ initialData }: AdminClientProps) {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    // Set initial data and then stop loading
     setData(initialData);
     setIsDataLoading(false);
   }, [initialData]);
+
+  // Client-side Firestore update function
+  const updateFirestore = async (grade: GradeSlug, category: ResourceCategory, newResources: Resource[]) => {
+      const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+      const fieldKey = `${grade}.${category}`;
+      await setDoc(docRef, { [grade]: { [category]: newResources } }, { merge: true });
+  }
 
   const handleSaveResource = async () => {
     if (!currentResource.grade || !currentResource.category || !currentResource.title || !currentResource.url) {
         toast({ title: "Hata", description: "Lütfen tüm alanları doldurun.", variant: "destructive" });
         return;
     }
+    if (user?.role !== 'admin') {
+        toast({ title: "Hata", description: "Bu işlem için yetkiniz yok.", variant: "destructive" });
+        return;
+    }
+
     setIsSubmitting(true);
+    const { grade, category } = currentResource;
+    
     try {
-        if (currentResource.id) {
-            await updateResource(currentResource.grade, currentResource.category, currentResource.id, { title: currentResource.title, url: currentResource.url });
+        const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+        const docSnap = await getDoc(docRef);
+        const currentData = docSnap.exists() ? docSnap.data() : {};
+
+        const currentCategoryResources: Resource[] = currentData[grade]?.[category] ?? [];
+        
+        if (currentResource.id) { // Update existing
+            const resourceIndex = currentCategoryResources.findIndex(r => r.id === currentResource.id);
+            if (resourceIndex > -1) {
+                const resourceToUpdate = currentCategoryResources[resourceIndex];
+                const updatedResource = { ...resourceToUpdate, title: currentResource.title, url: currentResource.url };
+                await updateFirestore(grade, category, [
+                    ...currentCategoryResources.slice(0, resourceIndex),
+                    updatedResource,
+                    ...currentCategoryResources.slice(resourceIndex + 1),
+                ]);
+            }
             toast({ title: "Başarılı", description: "Kaynak güncellendi." });
-        } else {
-            await addResource(currentResource.grade, currentResource.category, { title: currentResource.title, url: currentResource.url });
+        } else { // Add new
+            const newId = doc(collection(db, '_')).id;
+            const newResource: Resource = { id: newId, title: currentResource.title, url: currentResource.url };
+            await updateFirestore(grade, category, [...currentCategoryResources, newResource]);
             toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
         }
+
         setIsDialogOpen(false);
         await refreshData();
     } catch (error) {
         console.error("Failed to save resource:", error);
-        toast({ title: "Hata", description: "Kaynak kaydedilemedi.", variant: "destructive" });
+        toast({ title: "Hata", description: "Kaynak kaydedilemedi. İzinlerinizi kontrol edin.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
   };
   
-  const handleDeleteResource = async (grade: GradeSlug, category: ResourceCategory, resourceId: string) => {
+  const handleDeleteResource = async (grade: GradeSlug, category: ResourceCategory, resourceToDelete: Resource) => {
     if (!confirm("Bu kaynağı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) return;
+     if (user?.role !== 'admin') {
+        toast({ title: "Hata", description: "Bu işlem için yetkiniz yok.", variant: "destructive" });
+        return;
+    }
 
     try {
-      await deleteResource(grade, category, resourceId);
-      toast({
-        title: "Kaynak Silindi",
-        description: `Kaynak başarıyla silindi.`,
-      });
+      const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+      const fieldKey = `${grade}.${category}`;
+      await setDoc(docRef, { [grade]: { [category]: arrayRemove(resourceToDelete) } }, { merge: true });
+      
+      toast({ title: "Kaynak Silindi", description: `Kaynak başarıyla silindi.` });
       await refreshData();
     } catch (error) {
       console.error("Failed to delete resource:", error);
@@ -147,13 +186,13 @@ export function AdminClient({ initialData }: AdminClientProps) {
                       <TabsTrigger value="applications">Uygulamalar</TabsTrigger>
                     </TabsList>
                     <TabsContent value="videos" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug].videos} onEdit={(r) => openEditDialog(grade.slug, 'videos', r)} onDelete={(id) => handleDeleteResource(grade.slug, 'videos', id)} />
+                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.videos ?? []} onEdit={(r) => openEditDialog(grade.slug, 'videos', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'videos', r)} />
                     </TabsContent>
                     <TabsContent value="documents" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug].documents} onEdit={(r) => openEditDialog(grade.slug, 'documents', r)} onDelete={(id) => handleDeleteResource(grade.slug, 'documents', id)}/>
+                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.documents ?? []} onEdit={(r) => openEditDialog(grade.slug, 'documents', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'documents', r)}/>
                     </TabsContent>
                     <TabsContent value="applications" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug].applications} onEdit={(r) => openEditDialog(grade.slug, 'applications', r)} onDelete={(id) => handleDeleteResource(grade.slug, 'applications', id)}/>
+                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.applications ?? []} onEdit={(r) => openEditDialog(grade.slug, 'applications', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'applications', r)}/>
                     </TabsContent>
                   </Tabs>
                 </AccordionContent>
@@ -214,7 +253,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
   )
 }
 
-function ResourceTable({ isLoading, resources, onEdit, onDelete }: { isLoading: boolean; resources: Resource[], onEdit: (resource: Resource) => void, onDelete: (id: string) => void }) {
+function ResourceTable({ isLoading, resources, onEdit, onDelete }: { isLoading: boolean; resources: Resource[], onEdit: (resource: Resource) => void, onDelete: (resource: Resource) => void }) {
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (resources.length === 0) return <p className="text-muted-foreground p-4 text-center border rounded-md">Bu kategoride kaynak bulunmuyor.</p>;
   
@@ -237,7 +276,7 @@ function ResourceTable({ isLoading, resources, onEdit, onDelete }: { isLoading: 
                 <Button variant="ghost" size="icon" onClick={() => onEdit(resource)}>
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDelete(resource.id)}>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDelete(resource)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TableCell>
