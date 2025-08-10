@@ -1,12 +1,23 @@
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowRight, GraduationCap } from 'lucide-react';
-import { grades } from '@/lib/data';
+import { ArrowRight, GraduationCap, PlayCircle } from 'lucide-react';
+import { grades, Resource } from '@/lib/data';
 import { HeroAnimation } from '@/components/layout/hero-animation';
 import { TypewriterHero } from '@/components/layout/typewriter-hero';
+import { getCourseData } from '@/lib/course-actions';
+import { Button } from '@/components/ui/button';
 
-export default function Home() {
+export default async function Home() {
+  const allCourseData = await getCourseData();
+  
+  const allVideos: Resource[] = Object.values(allCourseData)
+    .flatMap(grade => grade.videos)
+    .filter(video => video.createdAt) // Sadece oluşturulma tarihi olanları al
+    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    
+  const featuredVideos = allVideos.slice(0, 4);
+
   return (
     <>
       <section className="relative h-[60vh] flex items-center justify-center text-center text-white overflow-hidden">
@@ -44,6 +55,40 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+        {featuredVideos.length > 0 && (
+          <section className="mt-20">
+            <h2 className="text-3xl font-bold text-center mb-8">Öne Çıkan Videolar</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {featuredVideos.map((video) => (
+                <Card key={video.id} className="group overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2">
+                   <CardHeader className="p-0">
+                     <div className="relative aspect-video">
+                        <img
+                          src={`https://placehold.co/600x400.png`}
+                          alt={video.title}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          data-ai-hint="math lesson"
+                        />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                       <div className="absolute bottom-4 left-4">
+                         <h3 className="text-white font-bold text-lg">{video.title}</h3>
+                       </div>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="p-4">
+                     <Button asChild className="w-full">
+                       <a href={video.url} target="_blank" rel="noopener noreferrer">
+                         <PlayCircle className="mr-2 h-4 w-4" />
+                         Şimdi İzle
+                       </a>
+                     </Button>
+                   </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
   );

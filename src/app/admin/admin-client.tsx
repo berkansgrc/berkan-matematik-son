@@ -32,6 +32,7 @@ type EditableResource = {
   category: ResourceCategory | '';
   title: string;
   url: string;
+  createdAt?: string;
 }
 
 const COURSE_COLLECTION = 'courseData';
@@ -100,7 +101,12 @@ export function AdminClient({ initialData }: AdminClientProps) {
             const resourceIndex = currentCategoryResources.findIndex(r => r.id === currentResource.id);
             if (resourceIndex > -1) {
                 const resourceToUpdate = currentCategoryResources[resourceIndex];
-                const updatedResource = { ...resourceToUpdate, title: currentResource.title, url: currentResource.url };
+                const updatedResource = { 
+                    ...resourceToUpdate, 
+                    title: currentResource.title, 
+                    url: currentResource.url,
+                    createdAt: resourceToUpdate.createdAt || new Date().toISOString() // Keep original date, or add if missing
+                };
                 await updateFirestore(grade, category, [
                     ...currentCategoryResources.slice(0, resourceIndex),
                     updatedResource,
@@ -110,7 +116,12 @@ export function AdminClient({ initialData }: AdminClientProps) {
             toast({ title: "Başarılı", description: "Kaynak güncellendi." });
         } else { // Add new
             const newId = doc(collection(db, '_')).id;
-            const newResource: Resource = { id: newId, title: currentResource.title, url: currentResource.url };
+            const newResource: Resource = { 
+              id: newId, 
+              title: currentResource.title, 
+              url: currentResource.url, 
+              createdAt: new Date().toISOString() 
+            };
             await updateFirestore(grade, category, [...currentCategoryResources, newResource]);
             toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
         }
@@ -134,8 +145,15 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
     try {
       const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-      const fieldKey = `${grade}.${category}`;
-      await setDoc(docRef, { [grade]: { [category]: arrayRemove(resourceToDelete) } }, { merge: true });
+      
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error("Document not found");
+
+      const currentData = docSnap.data();
+      const currentCategoryResources: Resource[] = currentData[grade]?.[category] ?? [];
+      const updatedResources = currentCategoryResources.filter(r => r.id !== resourceToDelete.id);
+      
+      await updateFirestore(grade, category, updatedResources);
       
       toast({ title: "Kaynak Silindi", description: `Kaynak başarıyla silindi.` });
       await refreshData();
