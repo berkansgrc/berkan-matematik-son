@@ -30,6 +30,41 @@ function getYouTubeThumbnail(url: string): string {
   return `https://placehold.co/600x400.png`;
 }
 
+// Helper function to create multiple star layers
+const createStars = (numLayers: number) => {
+  const layers = [];
+  for (let i = 1; i <= numLayers; i++) {
+    const size = `${i}px`;
+    const color = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.1})`;
+    const position = `${Math.random() * 100}% ${Math.random() * 100}%`;
+    layers.push(`radial-gradient(${size} ${size} at ${position}, ${color}, transparent)`);
+  }
+  return layers.join(', ');
+};
+
+const StarryBackground = () => {
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
+      <div 
+        className="absolute inset-0"
+        style={{
+          backgroundImage: createStars(150),
+          backgroundRepeat: 'repeat',
+          backgroundSize: '100% 100%',
+        }}
+      />
+      <div 
+        className="absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[animate-shooting-star_5s_linear_infinite]"
+        style={{ animationDelay: '1s' }}
+      />
+       <div 
+        className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[animate-shooting-star_5s_linear_infinite]"
+        style={{ animationDelay: '3s', animationDuration: '6s' }}
+      />
+    </div>
+  )
+}
+
 
 export default async function Home() {
   const allCourseData = await getCourseData();
@@ -43,9 +78,10 @@ export default async function Home() {
 
   return (
     <>
-      <section className="bg-secondary">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center py-12 md:py-24">
-          <div className="text-center md:text-left">
+      <section className="relative overflow-hidden">
+        <StarryBackground />
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center py-12 md:py-24">
+          <div className="text-center md:text-left text-white">
             <TypewriterHero />
           </div>
           <div className="flex items-center justify-center">
