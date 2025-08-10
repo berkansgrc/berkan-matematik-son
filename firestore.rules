@@ -1,13 +1,17 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Kullanıcıların yalnızca kendi bilgilerini okumasına ve güncellemesine izin ver.
-    // Yeni kullanıcıların kayıt olmasına izin ver.
+    // Allow users to create their own user document on signup and read it.
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, create: if request.auth != null && request.auth.uid == userId;
+      // Admins can read/write any user document (e.g., to change roles)
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Public read access for course data, but only admins can write.
+    match /courseData/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }
