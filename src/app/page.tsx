@@ -63,18 +63,20 @@ export default async function Home() {
               {featuredVideos.map((video) => (
                 <Card key={video.id} className="group overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2">
                    <CardHeader className="p-0">
-                     <div className="relative aspect-video">
+                     <a href={video.url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video">
                         <img
                           src={`https://placehold.co/600x400.png`}
                           alt={video.title}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                           data-ai-hint="math lesson"
                         />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                       <div className="absolute bottom-4 left-4">
-                         <h3 className="text-white font-bold text-lg">{video.title}</h3>
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+                         <h3 className="text-white font-bold text-lg p-4">{video.title}</h3>
                        </div>
-                     </div>
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <PlayCircle className="w-16 h-16 text-white" />
+                       </div>
+                     </a>
                    </CardHeader>
                    <CardContent className="p-4">
                      <Button asChild className="w-full">
