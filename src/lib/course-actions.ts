@@ -26,7 +26,7 @@ async function ensureDataInitialized(): Promise<void> {
 }
 
 // Fetches all course data from the single document in Firestore.
-export async function getCourseData(): Promise<GradeData> {
+export async function getCourseData(): Promise<CourseData> {
     await ensureDataInitialized();
     const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
     const docSnap = await getDoc(docRef);
@@ -84,14 +84,18 @@ export async function updateResource(grade: GradeSlug, category: ResourceCategor
         if (!docSnap.exists()) throw new Error("Course data document not found.");
 
         const data = docSnap.data();
-        const resources = data[grade]?.[category] as Resource[] || [];
+        const gradeData = data[grade];
+        if (!gradeData) throw new Error(`Grade '${grade}' not found.`);
         
+        const resources = gradeData[category] as Resource[] | undefined;
+        if (!resources) throw new Error(`Category '${category}' not found in grade '${grade}'.`);
+
         const resourceIndex = resources.findIndex(r => r.id === resourceId);
         if (resourceIndex === -1) throw new Error("Resource not found to update.");
 
         // Create a new array with the updated resource
         const newResources = [...resources];
-        newResources[resourceIndex] = { ...newResources[resourceIndex], ...updatedFields };
+        newResources[resourceIndex] = { ...newResources[resourceIndex], ...updatedFields, id: resourceId };
 
         // Update the entire array field
         const fieldKey = `${grade}.${category}`;
@@ -116,7 +120,15 @@ export async function deleteResource(grade: GradeSlug, category: ResourceCategor
         if (!docSnap.exists()) throw new Error("Course data document not found.");
         
         const data = docSnap.data();
-        const resources = data[grade]?.[category] as Resource[] || [];
+        const gradeData = data[grade];
+        if (!gradeData) throw new Error(`Grade '${grade}' not found.`);
+
+        const resources = gradeData[category] as Resource[] | undefined;
+        if (!resources) {
+             console.warn(`Category '${category}' not found in grade '${grade}', nothing to delete.`);
+             return;
+        }
+        
         const resourceToDelete = resources.find(r => r.id === resourceId);
 
         if (!resourceToDelete) {
