@@ -8,44 +8,43 @@ import { courseData as staticCourseData, grades, GradeSlug, GradeData, Resource,
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
 
-// Helper to ensure data exists in Firestore, seeding if necessary.
-async function ensureDataInitialized(): Promise<void> {
-    const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-        console.log("No course data found in Firestore, seeding from static data...");
-        try {
-            await setDoc(docRef, staticCourseData, { merge: true });
-            console.log("Successfully seeded course data to Firestore.");
-        } catch (error) {
-            console.error("Error seeding data to Firestore: ", error);
-            throw new Error("Failed to initialize course data.");
-        }
-    }
+// Helper to create an empty structure for all grades
+function getEmptyCourseData(): CourseData {
+    const emptyData: any = {};
+    grades.forEach(g => {
+        emptyData[g.slug] = {
+            ...staticCourseData[g.slug], // Keep name and description
+            videos: [],
+            documents: [],
+            applications: [],
+        };
+    });
+    return emptyData;
 }
+
 
 // Fetches all course data from the single document in Firestore.
 export async function getCourseData(): Promise<CourseData> {
-    await ensureDataInitialized();
     const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        // We need to transform the data to include IDs for each resource
         const data = docSnap.data() as Record<GradeSlug, Omit<GradeData, 'name' | 'description'>>;
         const transformedData: any = {};
 
-        for (const gradeSlug of Object.keys(data)) {
-            transformedData[gradeSlug] = {
-                 ...staticCourseData[gradeSlug as GradeSlug], // Keep static name/desc
-                ...data[gradeSlug as GradeSlug],
+        for (const gradeSlug of Object.keys(staticCourseData)) {
+            const slug = gradeSlug as GradeSlug;
+            transformedData[slug] = {
+                 ...staticCourseData[slug], // Keep static name/desc
+                 ...(data[slug] || {}), // Merge with data from firestore, or empty object if not present
             };
         }
         return transformedData;
     } else {
-        console.error("Could not fetch course data after attempting to initialize.");
-        throw new Error("Course data not found in Firestore.");
+        console.warn("Course data document not found in Firestore. Returning empty data structure. Admin should initialize data.");
+        // If the document doesn't exist, return a structured object with empty resource arrays
+        // This prevents errors on the frontend which expects the grade keys to exist.
+        return getEmptyCourseData();
     }
 }
 
@@ -59,13 +58,17 @@ export async function addResource(grade: GradeSlug, category: ResourceCategory, 
     const newId = doc(collection(db, '_')).id; // Generate a unique ID
     const resourceWithId: Resource = { ...resource, id: newId };
     
-    // The key for the field to update, e.g., '5-sinif.videos'
     const fieldKey = `${grade}.${category}`;
 
     try {
-        await updateDoc(docRef, {
-            [fieldKey]: arrayUnion(resourceWithId)
-        });
+        // Use set with merge:true to create the document if it doesn't exist.
+        // This ensures the first resource can be added smoothly.
+        await setDoc(docRef, {
+            [grade]: {
+                [category]: arrayUnion(resourceWithId)
+            }
+        }, { merge: true });
+
     } catch (error) {
         console.error("Error adding resource: ", error);
         throw new Error("Failed to add resource.");
@@ -93,11 +96,9 @@ export async function updateResource(grade: GradeSlug, category: ResourceCategor
         const resourceIndex = resources.findIndex(r => r.id === resourceId);
         if (resourceIndex === -1) throw new Error("Resource not found to update.");
 
-        // Create a new array with the updated resource
         const newResources = [...resources];
         newResources[resourceIndex] = { ...newResources[resourceIndex], ...updatedFields, id: resourceId };
 
-        // Update the entire array field
         const fieldKey = `${grade}.${category}`;
         await updateDoc(docRef, { [fieldKey]: newResources });
 
