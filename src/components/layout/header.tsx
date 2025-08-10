@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Home, LogOut, Shield } from "lucide-react";
@@ -27,7 +26,7 @@ export function Header() {
            <img
               src="/logo.png"
               alt="Berkan Matematik Logo"
-              style={{ height: '80px', width: 'auto' }}
+              style={{ height: '160px', width: 'auto' }}
               className="transition-transform duration-300 group-hover:scale-105"
             />
         </Link>
