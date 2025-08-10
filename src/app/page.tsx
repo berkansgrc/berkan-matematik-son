@@ -13,7 +13,7 @@ export default async function Home() {
   
   const allVideos: Resource[] = Object.values(allCourseData)
     .flatMap(grade => grade.videos)
-    .filter(video => video.createdAt) // Sadece oluşturulma tarihi olanları al
+    .filter(video => video.createdAt) // Ensure createdAt exists
     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
     
   const featuredVideos = allVideos.slice(0, 4);
