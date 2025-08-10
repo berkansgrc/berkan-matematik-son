@@ -3,22 +3,13 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import { grades } from '@/lib/data';
+import { HeroAnimation } from '@/components/layout/hero-animation';
 
 export default function Home() {
   return (
     <>
       <section className="relative h-[60vh] flex items-center justify-center text-center text-white overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute z-0 w-auto min-w-full min-h-full max-w-none"
-        >
-          {/* Sizin videonuz: Lütfen public klasörüne 'hero-video.mp4' adıyla bir video ekleyin */}
-          <source src="/hero-video.mp4" type="video/mp4" />
-          Tarayıcınız video etiketini desteklemiyor.
-        </video>
+        <HeroAnimation className="absolute z-0 w-auto min-w-full min-h-full max-w-none" />
         <div className="absolute inset-0 bg-black/50 z-10"></div>
         <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
