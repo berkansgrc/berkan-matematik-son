@@ -34,10 +34,10 @@ function getYouTubeThumbnail(url: string): string {
 const createStars = (numLayers: number) => {
   const layers = [];
   for (let i = 1; i <= numLayers; i++) {
-    const size = `${i}px`;
+    const size = `${Math.random() * 2 + 1}px`;
     const color = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.1})`;
     const position = `${Math.random() * 100}% ${Math.random() * 100}%`;
-    layers.push(`radial-gradient(${size} ${size} at ${position}, ${color}, transparent)`);
+    layers.push(`radial-gradient(${size} at ${position}, ${color}, transparent)`);
   }
   return layers.join(', ');
 };
@@ -54,12 +54,10 @@ const StarryBackground = () => {
         }}
       />
       <div 
-        className="absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/50 to-transparent animate-[animate-shooting-star_5s_linear_infinite]"
-        style={{ animationDelay: '1s' }}
-      />
-       <div 
-        className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[animate-shooting-star_5s_linear_infinite]"
-        style={{ animationDelay: '3s', animationDuration: '6s' }}
+        className="absolute top-0 right-0 h-px w-[300px] bg-gradient-to-l from-transparent via-white/50 to-transparent"
+        style={{
+          animation: 'animate-shooting-star 5s linear infinite'
+        }}
       />
     </div>
   )
