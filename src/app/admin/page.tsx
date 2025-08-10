@@ -12,15 +12,19 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'admin') {
+        router.push('/');
+      }
     }
   }, [user, loading, router]);
   
-  if (loading || !user) {
+  if (loading || !user || user.role !== 'admin') {
       return (
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 flex justify-center items-center">
-              <p>Yükleniyor...</p>
+              <p>Yükleniyor veya yetkiniz yok...</p>
           </div>
       )
   }

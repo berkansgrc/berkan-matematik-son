@@ -7,14 +7,18 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  User,
-  Auth,
+  User as FirebaseAuthUser,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
+export interface AppUser extends FirebaseAuthUser {
+  role?: string;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   signUp: (email: string, pass: string) => Promise<any>;
   signIn: (email: string, pass: string) => Promise<any>;
@@ -24,21 +28,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+           setUser({ ...firebaseUser, ...userDocSnap.data() });
+        } else {
+           setUser(firebaseUser);
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const signUp = (email: string, pass: string) => {
-    return createUserWithEmailAndPassword(auth, email, pass);
+  const signUp = async (email: string, pass: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    const firebaseUser = userCredential.user;
+    
+    // Create user document in Firestore
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    await setDoc(userDocRef, {
+      email: firebaseUser.email,
+      role: 'student' // Default role
+    });
+
+    return userCredential;
   };
 
   const signIn = (email: string, pass: string) => {

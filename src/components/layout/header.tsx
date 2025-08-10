@@ -35,7 +35,7 @@ export function Header() {
                 <span className="sr-only">Ana Sayfa</span>
               </Link>
             </Button>
-            {user && (
+            {user && user.role === 'admin' && (
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/admin" aria-label="Admin Paneli">
                   <Shield className="h-5 w-5" />
