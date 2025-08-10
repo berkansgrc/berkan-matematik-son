@@ -76,15 +76,15 @@ export default async function Home() {
 
   return (
     <>
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden min-h-[60vh] md:min-h-[70vh] flex items-center justify-center">
         <StarryBackground />
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center py-12 md:py-24">
-          <div className="text-center md:text-left text-white">
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="text-white">
             <TypewriterHero />
           </div>
-          <div className="flex items-center justify-center">
-             <HeroAnimation className="w-full max-w-md h-auto" />
-          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 z-0">
+          <HeroAnimation className="w-full max-w-xl h-auto opacity-80" />
         </div>
       </section>
 
