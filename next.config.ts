@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -20,9 +21,7 @@ const nextConfig: NextConfig = {
   },
   // This is to allow cross-origin requests in the development environment,
   // which is necessary for cloud-based IDEs like Firebase Studio.
-  experimental: {
-    // allowedDevOrigins was moved out of experimental in a newer Next.js version
-  },
+  // The `allowedDevOrigins` property was moved out of `experimental` in newer Next.js versions.
   allowedDevOrigins: [
     'https://*.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev',
   ],
