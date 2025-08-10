@@ -2,7 +2,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AppWindow, FileText, Video, AlertCircle } from 'lucide-react';
-import { grades, type GradeSlug, type Resource, type GradeData } from '@/lib/data';
+import { grades, type GradeSlug, type Resource, type GradeData, ResourceCategory } from '@/lib/data';
 import { getCourseData } from '@/lib/course-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,20 @@ export default async function GradePage({ params }: { params: { grade: GradeSlug
 
   if (!data || !gradeInfo) {
     notFound();
+  }
+
+  const getResourceLink = (category: ResourceCategory, resource: Resource) => {
+    if (category === 'applications') {
+        return `/view-app?url=${encodeURIComponent(resource.url)}`;
+    }
+    return resource.url;
+  }
+
+  const getLinkTarget = (category: ResourceCategory) => {
+    if (category === 'applications') {
+        return '_blank'; // Open iframe wrapper in a new tab
+    }
+    return '_blank';
   }
 
   return (
@@ -54,7 +68,13 @@ export default async function GradePage({ params }: { params: { grade: GradeSlug
           {data.videos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {data.videos.map(item => (
-                <ResourceCard key={item.id} resource={item} icon={<Video className="w-6 h-6 text-primary" />} />
+                <ResourceCard 
+                    key={item.id} 
+                    resource={item} 
+                    icon={<Video className="w-6 h-6 text-primary" />} 
+                    href={getResourceLink('videos', item)}
+                    target={getLinkTarget('videos')}
+                />
               ))}
             </div>
           ) : (
@@ -65,7 +85,13 @@ export default async function GradePage({ params }: { params: { grade: GradeSlug
           {data.documents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {data.documents.map(item => (
-                <ResourceCard key={item.id} resource={item} icon={<FileText className="w-6 h-6 text-primary" />} />
+                <ResourceCard 
+                    key={item.id} 
+                    resource={item} 
+                    icon={<FileText className="w-6 h-6 text-primary" />}
+                    href={getResourceLink('documents', item)}
+                    target={getLinkTarget('documents')}
+                />
               ))}
             </div>
           ) : (
@@ -76,7 +102,13 @@ export default async function GradePage({ params }: { params: { grade: GradeSlug
           {data.applications.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {data.applications.map(item => (
-                <ResourceCard key={item.id} resource={item} icon={<AppWindow className="w-6 h-6 text-primary" />} />
+                <ResourceCard 
+                    key={item.id} 
+                    resource={item} 
+                    icon={<AppWindow className="w-6 h-6 text-primary" />} 
+                    href={getResourceLink('applications', item)}
+                    target={getLinkTarget('applications')}
+                />
               ))}
             </div>
           ) : (
@@ -88,9 +120,9 @@ export default async function GradePage({ params }: { params: { grade: GradeSlug
   );
 }
 
-function ResourceCard({ resource, icon }: { resource: Resource; icon: React.ReactNode }) {
+function ResourceCard({ resource, icon, href, target }: { resource: Resource; icon: React.ReactNode; href: string; target: string; }) {
   return (
-    <a href={resource.url} target="_blank" rel="noopener noreferrer" className="group">
+    <a href={href} target={target} rel="noopener noreferrer" className="group">
       <Card className="h-full transition-all duration-300 ease-in-out group-hover:shadow-lg group-hover:border-accent">
         <CardHeader className="flex flex-row items-center gap-4 p-4">
           <div className="bg-primary/10 p-3 rounded-lg">

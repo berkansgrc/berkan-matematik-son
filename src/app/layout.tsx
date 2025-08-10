@@ -14,9 +14,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  params
 }: Readonly<{
   children: React.ReactNode;
+  params?: { [key: string]: string | string[] | undefined };
 }>) {
+
+  // Simple check if the current route is the app viewer
+  // A more robust solution might use route groups or middleware
+  const isAppView = (params as any)?.['view-app'];
+
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
