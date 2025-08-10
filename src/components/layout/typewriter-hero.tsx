@@ -6,7 +6,7 @@ import { TypeAnimation } from 'react-type-animation';
 export function TypewriterHero() {
   return (
     <>
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">
+        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 text-primary">
             Berkan Matematik
         </h1>
         <TypeAnimation
@@ -22,7 +22,7 @@ export function TypewriterHero() {
             ]}
             wrapper="p"
             speed={50}
-            className="mt-4 text-lg md:text-xl max-w-3xl mx-auto"
+            className="mt-4 text-lg md:text-xl max-w-3xl text-foreground/80"
             repeat={Infinity}
         />
     </>

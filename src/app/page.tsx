@@ -43,11 +43,14 @@ export default async function Home() {
 
   return (
     <>
-      <section className="relative h-[60vh] flex items-center justify-center text-center text-white overflow-hidden">
-        <HeroAnimation className="absolute z-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
-        <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
-          <TypewriterHero />
+      <section className="bg-secondary">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center py-12 md:py-24">
+          <div className="text-center md:text-left">
+            <TypewriterHero />
+          </div>
+          <div className="flex items-center justify-center">
+             <HeroAnimation className="w-full max-w-md h-auto" />
+          </div>
         </div>
       </section>
 
