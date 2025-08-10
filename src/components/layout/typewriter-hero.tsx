@@ -19,7 +19,7 @@ export function TypewriterHero() {
             ]}
             wrapper="p"
             speed={50}
-            className="mt-4 text-lg md:text-xl max-w-3xl text-foreground/80 font-bold"
+            className="mt-4 text-xl md:text-2xl max-w-3xl text-white/90 font-bold"
             repeat={Infinity}
         />
     </>
