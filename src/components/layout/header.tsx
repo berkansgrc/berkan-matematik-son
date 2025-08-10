@@ -27,7 +27,7 @@ export function Header() {
            <img
               src="/logo.png"
               alt="Berkan Matematik Logo"
-              style={{ height: '60px', width: 'auto' }}
+              style={{ height: '80px', width: 'auto' }}
               className="transition-transform duration-300 group-hover:scale-105"
             />
         </Link>
