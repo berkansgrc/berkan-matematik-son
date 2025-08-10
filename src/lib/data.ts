@@ -1,18 +1,26 @@
+
 export interface Resource {
   id: string;
   title: string;
   url: string;
 }
 
-export interface GradeData {
-  name: string;
-  description: string;
+export type ResourceCategory = 'videos' | 'documents' | 'applications';
+
+export interface GradeContent {
   videos: Resource[];
   documents: Resource[];
   applications: Resource[];
 }
 
+export interface GradeData extends GradeContent {
+  name: string;
+  description: string;
+}
+
 export type GradeSlug = '5-sinif' | '6-sinif' | '7-sinif' | 'lgs';
+
+export type CourseData = Record<GradeSlug, GradeData>;
 
 export const grades: { slug: GradeSlug; name: string; description: string }[] = [
   { slug: '5-sinif', name: '5. Sınıf', description: 'Ortaokulun ilk adımı için tüm konular.' },
@@ -21,7 +29,8 @@ export const grades: { slug: GradeSlug; name: string; description: string }[] = 
   { slug: 'lgs', name: 'LGS Hazırlık', description: 'Liselere Geçiş Sınavı\'na özel hazırlık.' },
 ];
 
-export const courseData: Record<GradeSlug, GradeData> = {
+// This is now primarily used for seeding data and providing static info like name/description
+export const courseData: CourseData = {
   '5-sinif': {
     name: '5. Sınıf',
     description: 'Ortaokulun ilk adımı için tüm konular.',

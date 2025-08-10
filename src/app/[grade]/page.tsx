@@ -1,7 +1,9 @@
+
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AppWindow, FileText, Video, AlertCircle } from 'lucide-react';
-import { courseData, grades, type GradeSlug, type Resource } from '@/lib/data';
+import { grades, type GradeSlug, type Resource, type GradeData } from '@/lib/data';
+import { getCourseData } from '@/lib/course-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,9 +14,12 @@ export async function generateStaticParams() {
   }));
 }
 
-export default function GradePage({ params }: { params: { grade: GradeSlug } }) {
+export default async function GradePage({ params }: { params: { grade: GradeSlug } }) {
   const gradeInfo = grades.find(g => g.slug === params.grade);
-  const data = courseData[params.grade];
+  
+  // Fetch all data from Firestore
+  const allCourseData = await getCourseData();
+  const data = allCourseData[params.grade];
 
   if (!data || !gradeInfo) {
     notFound();

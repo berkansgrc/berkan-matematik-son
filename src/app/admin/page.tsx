@@ -1,33 +1,13 @@
 
-"use client";
-
+// This is a server component, so we can fetch data directly.
 import { AdminClient } from './admin-client';
-import { courseData } from '@/lib/data';
-import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { getCourseData } from '@/lib/course-actions';
 
-export default function AdminPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/login');
-      } else if (user.role !== 'admin') {
-        router.push('/');
-      }
-    }
-  }, [user, loading, router]);
-  
-  if (loading || !user || user.role !== 'admin') {
-      return (
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 flex justify-center items-center">
-              <p>Yükleniyor veya yetkiniz yok...</p>
-          </div>
-      )
-  }
+export default async function AdminPage() {
+  // Fetch initial data from Firestore.
+  // Note: This data will be passed to the client, but the client 
+  // will also re-fetch and manage its own state for real-time updates.
+  const initialData = await getCourseData();
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -37,7 +17,7 @@ export default function AdminPage() {
           Ders kaynaklarını (video, döküman, uygulama) buradan yönetebilirsiniz.
         </p>
       </header>
-      <AdminClient initialData={courseData} />
+      <AdminClient initialData={initialData} />
     </div>
   );
 }
