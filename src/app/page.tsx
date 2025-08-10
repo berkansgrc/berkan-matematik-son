@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <>
       <section className="relative h-[60vh] flex items-center justify-center text-center text-white overflow-hidden">
-        <HeroAnimation className="absolute z-0 w-auto min-w-full min-h-full max-w-none" />
+        <HeroAnimation className="absolute z-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/50 z-10"></div>
         <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
