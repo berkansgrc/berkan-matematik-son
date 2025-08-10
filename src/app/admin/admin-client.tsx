@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 type AdminClientProps = {
   initialData: typeof CourseDataType;
