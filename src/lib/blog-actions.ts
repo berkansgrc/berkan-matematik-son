@@ -17,9 +17,6 @@ import {
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Post } from './data';
-import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import { withAuth } from '@genkit-ai/googleai';
 
 const POSTS_COLLECTION = 'posts';
 
@@ -70,98 +67,76 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   }
 }
 
-// Define Zod schemas for input validation
-const PostSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, 'Title is required'),
-  content: z.string().optional(),
-});
+// Note: For these actions to work from the client, you must have Firestore security rules
+// that validate the user's role (e.g., check if the user is an admin).
+// The client-side code in `blog-client.tsx` should ideally only be rendered for admins.
 
-const PostIdSchema = z.string().min(1, 'Post ID is required');
-
+interface SavePostPayload {
+  id?: string;
+  title: string;
+  content?: string;
+}
 
 // Save (create or update) a post
-export const savePost = ai.defineFlow(
-  {
-    name: 'savePost',
-    inputSchema: PostSchema,
-    outputSchema: z.custom<Post>(),
-  },
-  withAuth(async (postData, context) => {
-    const userDocRef = doc(db, 'users', context.auth.uid);
-    const userDoc = await getDoc(userDocRef);
-    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-      throw new Error('Permission denied: Only admins can save posts.');
+export async function savePost(postData: SavePostPayload): Promise<Post> {
+  // Security should be enforced by Firestore rules.
+  // Example Rule: allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+  const { id, title, content } = postData;
+  const now = serverTimestamp();
+
+  let savedPost: Post;
+
+  if (id) {
+    // Update existing post
+    const postRef = doc(db, POSTS_COLLECTION, id);
+    const updateData: any = { content, updatedAt: now };
+    if (title) {
+        updateData.title = title;
+        updateData.slug = createSlug(title);
     }
-
-    const { id, title, content } = postData;
-    const now = serverTimestamp();
-
-    let savedPost: Post;
-
-    if (id) {
-      // Update existing post
-      const postRef = doc(db, POSTS_COLLECTION, id);
-      const updateData: any = { content, updatedAt: now };
-      if (title) {
-          updateData.title = title;
-          updateData.slug = createSlug(title);
-      }
-      await updateDoc(postRef, updateData);
-      
-      const updatedDoc = await getDoc(postRef);
-      savedPost = transformPost(updatedDoc);
-      revalidatePath('/blog');
-      revalidatePath(`/blog/${savedPost.slug}`);
-      revalidatePath('/admin');
-    } else {
-      // Create new post
-      if (!title) throw new Error("Title is required for a new post.");
-
-      const slug = createSlug(title);
-      const newPostRef = await addDoc(collection(db, POSTS_COLLECTION), {
-        title,
-        slug,
-        content: content || '',
-        createdAt: now,
-        updatedAt: now,
-      });
-      const newDoc = await getDoc(newPostRef);
-      savedPost = transformPost(newDoc);
-      revalidatePath('/blog');
-      revalidatePath('/admin');
-    }
+    await updateDoc(postRef, updateData);
     
-    return savedPost;
-  })
-);
+    const updatedDoc = await getDoc(postRef);
+    savedPost = transformPost(updatedDoc);
+    revalidatePath('/blog');
+    revalidatePath(`/blog/${savedPost.slug}`);
+    revalidatePath('/admin');
+  } else {
+    // Create new post
+    if (!title) throw new Error("Title is required for a new post.");
+
+    const slug = createSlug(title);
+    const newPostRef = await addDoc(collection(db, POSTS_COLLECTION), {
+      title,
+      slug,
+      content: content || '',
+      createdAt: now,
+      updatedAt: now,
+    });
+    const newDoc = await getDoc(newPostRef);
+    savedPost = transformPost(newDoc);
+    revalidatePath('/blog');
+    revalidatePath('/admin');
+  }
+  
+  return savedPost;
+}
 
 // Delete a post
-export const deletePost = ai.defineFlow(
-  {
-    name: 'deletePost',
-    inputSchema: PostIdSchema,
-    outputSchema: z.void(),
-  },
-  withAuth(async (postId, context) => {
-      const userDocRef = doc(db, 'users', context.auth.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-          throw new Error('Permission denied: Only admins can delete posts.');
-      }
+export async function deletePost(postId: string): Promise<void> {
+  // Security should be enforced by Firestore rules.
+  const postRef = doc(db, POSTS_COLLECTION, postId);
+  const docSnap = await getDoc(postRef);
+  
+  if (!docSnap.exists()) {
+      throw new Error("Post not found");
+  }
+  
+  const slug = docSnap.data().slug;
 
-      const postRef = doc(db, POSTS_COLLECTION, postId);
-      const docSnap = await getDoc(postRef);
-      if (!docSnap.exists()) {
-          throw new Error("Post not found");
-      }
-      
-      const slug = docSnap.data().slug;
+  await deleteDoc(postRef);
 
-      await deleteDoc(postRef);
-
-      revalidatePath('/blog');
-      revalidatePath(`/blog/${slug}`);
-      revalidatePath('/admin');
-  })
-);
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath('/admin');
+}

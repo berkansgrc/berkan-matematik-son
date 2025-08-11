@@ -43,7 +43,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
     setIsSubmitting(true);
     try {
-      // Use the Genkit flow for saving
       const savedPost = await savePost({
         id: currentPost.id,
         title: currentPost.title,
@@ -61,7 +60,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       }
       handleCloseDialog();
     } catch (error: any) {
-      toast({ title: "Hata", description: error.message || "İşlem sırasında bir hata oluştu.", variant: "destructive" });
+      toast({ title: "Hata", description: "İşlem sırasında bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -72,12 +71,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
     
     setIsSubmitting(true);
     try {
-        // Use the new Genkit flow for deleting
         await deletePost(postId);
         setPosts(posts.filter(p => p.id !== postId));
         toast({ title: 'Başarılı', description: 'Yazı silindi.' });
     } catch (error: any) {
-        toast({ title: 'Hata', description: error.message || 'Yazı silinirken bir hata oluştu.', variant: 'destructive' });
+        toast({ title: 'Hata', description: "Yazı silinirken bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", variant: 'destructive' });
     } finally {
         setIsSubmitting(false);
     }
