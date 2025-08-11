@@ -19,7 +19,7 @@ import { revalidatePath } from 'next/cache';
 import type { Post } from './data';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { withAuth } from '@genkit-ai/next/auth';
+import { withAuth } from '@genkit-ai/next';
 
 const POSTS_COLLECTION = 'posts';
 
