@@ -8,9 +8,8 @@ import { grades } from '@/lib/data';
 import { getCourseData } from '@/lib/course-actions';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, collection, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection } from 'firebase/firestore';
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
@@ -19,8 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 type AdminClientProps = {
   initialData: CourseData;
@@ -70,7 +69,6 @@ export function AdminClient({ initialData }: AdminClientProps) {
     setIsDataLoading(false);
   }, [initialData]);
 
-  // Client-side Firestore update function
   const updateFirestore = async (grade: GradeSlug, category: ResourceCategory, newResources: Resource[]) => {
       const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
       const fieldKey = `${grade}.${category}`;
@@ -94,7 +92,6 @@ export function AdminClient({ initialData }: AdminClientProps) {
         const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
         const docSnap = await getDoc(docRef);
         const currentData = docSnap.exists() ? docSnap.data() : {};
-
         const currentCategoryResources: Resource[] = currentData[grade]?.[category] ?? [];
         
         if (currentResource.id) { // Update existing
@@ -105,7 +102,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
                     ...resourceToUpdate, 
                     title: currentResource.title, 
                     url: currentResource.url,
-                    createdAt: resourceToUpdate.createdAt || new Date().toISOString() // Keep original date, or add if missing
+                    createdAt: resourceToUpdate.createdAt || new Date().toISOString()
                 };
                 await updateFirestore(grade, category, [
                     ...currentCategoryResources.slice(0, resourceIndex),
@@ -163,8 +160,8 @@ export function AdminClient({ initialData }: AdminClientProps) {
     }
   }
 
-  const openAddDialog = () => {
-    setCurrentResource({ id: undefined, grade: '', category: '', title: '', url: '' });
+  const openAddDialog = (grade?: GradeSlug, category?: ResourceCategory) => {
+    setCurrentResource({ id: undefined, grade: grade || '', category: category || '', title: '', url: '' });
     setIsDialogOpen(true);
   }
 
@@ -184,42 +181,67 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button onClick={openAddDialog} variant="default">
+      <div className="flex justify-end mb-6">
+        <Button onClick={() => openAddDialog()} variant="default">
           <PlusCircle className="mr-2 h-4 w-4" /> Yeni Kaynak Ekle
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Accordion type="single" collapsible className="w-full" defaultValue={grades[0].slug}>
+      <Tabs defaultValue={grades[0].slug} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             {grades.map(grade => (
-              <AccordionItem value={grade.slug} key={grade.slug}>
-                <AccordionTrigger className="text-lg font-semibold px-6 py-4">{grade.name}</AccordionTrigger>
-                <AccordionContent className="px-6 pb-4">
-                  <Tabs defaultValue="videos" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 bg-secondary">
-                      <TabsTrigger value="videos">Videolar</TabsTrigger>
-                      <TabsTrigger value="documents">Dökümanlar</TabsTrigger>
-                      <TabsTrigger value="applications">Uygulamalar</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="videos" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.videos ?? []} onEdit={(r) => openEditDialog(grade.slug, 'videos', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'videos', r)} />
-                    </TabsContent>
-                    <TabsContent value="documents" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.documents ?? []} onEdit={(r) => openEditDialog(grade.slug, 'documents', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'documents', r)}/>
-                    </TabsContent>
-                    <TabsContent value="applications" className="mt-4">
-                      <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.applications ?? []} onEdit={(r) => openEditDialog(grade.slug, 'applications', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'applications', r)}/>
-                    </TabsContent>
-                  </Tabs>
-                </AccordionContent>
-              </AccordionItem>
+                 <TabsTrigger key={grade.slug} value={grade.slug}>{grade.name}</TabsTrigger>
             ))}
-          </Accordion>
-        </CardContent>
-      </Card>
+        </TabsList>
+        {grades.map(grade => (
+            <TabsContent key={grade.slug} value={grade.slug} className="mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Videos */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2"><Video className="w-5 h-5 text-primary"/> Videolar</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => openAddDialog(grade.slug, 'videos')}><PlusCircle className="mr-2 h-4 w-4" /> Ekle</Button>
+                            </div>
+                            <CardDescription>Bu sınıfa ait video dersleri.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.videos ?? []} onEdit={(r) => openEditDialog(grade.slug, 'videos', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'videos', r)} />
+                        </CardContent>
+                    </Card>
 
+                    {/* Documents */}
+                     <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-primary"/> Dökümanlar</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => openAddDialog(grade.slug, 'documents')}><PlusCircle className="mr-2 h-4 w-4" /> Ekle</Button>
+                            </div>
+                            <CardDescription>Ders notları, testler ve çalışma kağıtları.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.documents ?? []} onEdit={(r) => openEditDialog(grade.slug, 'documents', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'documents', r)} />
+                        </CardContent>
+                    </Card>
+
+                    {/* Applications */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2"><AppWindow className="w-5 h-5 text-primary"/> Uygulamalar</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => openAddDialog(grade.slug, 'applications')}><PlusCircle className="mr-2 h-4 w-4" /> Ekle</Button>
+                            </div>
+                            <CardDescription>İnteraktif oyunlar ve simülasyonlar.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <ResourceTable isLoading={isDataLoading} resources={data[grade.slug]?.applications ?? []} onEdit={(r) => openEditDialog(grade.slug, 'applications', r)} onDelete={(r) => handleDeleteResource(grade.slug, 'applications', r)} />
+                        </CardContent>
+                    </Card>
+                </div>
+            </TabsContent>
+        ))}
+      </Tabs>
+      
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -231,7 +253,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="grade-select" className="text-right">Sınıf</Label>
-              <Select disabled={isSubmitting || !!currentResource.id} value={currentResource.grade} onValueChange={(value) => setCurrentResource(prev => ({...prev, grade: value as GradeSlug}))}>
+              <Select disabled={isSubmitting} value={currentResource.grade} onValueChange={(value) => setCurrentResource(prev => ({...prev, grade: value as GradeSlug}))}>
                 <SelectTrigger id="grade-select" className="col-span-3"><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
                 <SelectContent>
                   {grades.map(g => <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>)}
@@ -240,7 +262,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category-select" className="text-right">Kategori</Label>
-              <Select disabled={isSubmitting || !!currentResource.id} value={currentResource.category} onValueChange={(value) => setCurrentResource(prev => ({...prev, category: value as ResourceCategory}))}>
+              <Select disabled={isSubmitting} value={currentResource.category} onValueChange={(value) => setCurrentResource(prev => ({...prev, category: value as ResourceCategory}))}>
                 <SelectTrigger id="category-select" className="col-span-3"><SelectValue placeholder="Kategori seçin" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="videos">Video</SelectItem>
@@ -273,7 +295,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
 function ResourceTable({ isLoading, resources, onEdit, onDelete }: { isLoading: boolean; resources: Resource[], onEdit: (resource: Resource) => void, onDelete: (resource: Resource) => void }) {
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-  if (resources.length === 0) return <p className="text-muted-foreground p-4 text-center border rounded-md">Bu kategoride kaynak bulunmuyor.</p>;
+  if (resources.length === 0) return <p className="text-muted-foreground p-4 text-center border rounded-md min-h-[80px] flex items-center justify-center">Bu kategoride kaynak bulunmuyor.</p>;
   
   return (
     <div className="border rounded-md">
@@ -281,15 +303,17 @@ function ResourceTable({ isLoading, resources, onEdit, onDelete }: { isLoading: 
         <TableHeader>
           <TableRow>
             <TableHead>Başlık</TableHead>
-            <TableHead>URL</TableHead>
             <TableHead className="text-right w-[100px]">İşlemler</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {resources.map((resource) => (
+          {resources.slice().sort((a,b) => (a.createdAt && b.createdAt) ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0).map((resource) => (
             <TableRow key={resource.id}>
-              <TableCell className="font-medium">{resource.title}</TableCell>
-              <TableCell><a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-xs block">{resource.url}</a></TableCell>
+              <TableCell className="font-medium">
+                  <a href={resource.url} target="_blank" rel="noopener noreferrer" className="hover:underline" title={resource.url}>
+                      {resource.title}
+                  </a>
+              </TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(resource)}>
                   <Edit className="h-4 w-4" />
