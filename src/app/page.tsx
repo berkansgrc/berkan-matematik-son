@@ -76,7 +76,7 @@ export default async function Home() {
 
   return (
     <>
-      <section className="relative overflow-hidden min-h-[60vh] md:min-h-[70vh] flex items-center justify-center">
+      <section className="relative overflow-hidden min-h-[80vh] md:min-h-[90vh] flex items-center justify-center">
         <StarryBackground />
         <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center">
           <div className="text-white text-center md:text-left">
