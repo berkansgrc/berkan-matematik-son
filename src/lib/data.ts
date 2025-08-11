@@ -32,7 +32,6 @@ export interface Post {
   slug: string;
   title: string;
   content: string;
-  thumbnailUrl?: string; // Optional image URL from Firebase Storage
   createdAt: string; // ISO 8601 date string
   updatedAt: string; // ISO 8601 date string
 }

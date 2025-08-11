@@ -13,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import Image from 'next/image';
 
 type BlogClientProps = {
   initialPosts: Post[];
@@ -48,7 +47,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         id: currentPost.id,
         title: currentPost.title,
         content: currentPost.content,
-        thumbnailUrl: currentPost.thumbnailUrl,
       };
 
       const savedPost = await savePost(postToSave);
@@ -67,7 +65,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         console.error("Save post error:", error);
         toast({ 
             title: "Hata", 
-            description: "Yazı kaydedilemedi. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", 
+            description: `Yazı kaydedilemedi: ${error.message}. Lütfen Firestore güvenlik kurallarınızı kontrol edin.`, 
             variant: "destructive" 
         });
     } finally {
@@ -87,7 +85,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         console.error("Delete post error:", error);
         toast({ 
             title: 'Hata', 
-            description: "Yazı silinirken bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", 
+            description: `Yazı silinirken bir hata oluştu: ${error.message}. Lütfen Firestore güvenlik kurallarınızı kontrol edin.`,
             variant: 'destructive' 
         });
     } finally {
@@ -106,11 +104,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map(post => (
           <Card key={post.id} className="flex flex-col">
-             {post.thumbnailUrl && (
-                <div className="relative h-48 w-full">
-                    <Image src={post.thumbnailUrl} alt={post.title} layout="fill" objectFit="cover" className="rounded-t-lg" />
-                </div>
-            )}
             <CardHeader>
               <CardTitle>{post.title}</CardTitle>
               <CardDescription>
@@ -138,7 +131,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
           <DialogHeader>
             <DialogTitle>{currentPost?.id ? 'Yazıyı Düzenle' : 'Yeni Yazı Oluştur'}</DialogTitle>
             <DialogDescription>
-              Blog yazınızın başlığını, içeriğini ve görselini girin.
+              Blog yazınızın başlığını ve içeriğini girin.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -150,16 +143,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                 onChange={(e) => setCurrentPost({ ...currentPost, title: e.target.value })}
                 disabled={isSubmitting}
               />
-            </div>
-             <div className="grid items-center gap-2">
-                <Label htmlFor="thumbnailUrl">Görsel URL</Label>
-                 <Input
-                    id="thumbnailUrl"
-                    placeholder="https://ornek.com/resim.jpg"
-                    value={currentPost?.thumbnailUrl || ''}
-                    onChange={(e) => setCurrentPost({ ...currentPost, thumbnailUrl: e.target.value })}
-                    disabled={isSubmitting}
-                />
             </div>
             <div className="grid items-center gap-2">
               <Label htmlFor="content">İçerik</Label>

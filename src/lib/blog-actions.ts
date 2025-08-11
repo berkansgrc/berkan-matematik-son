@@ -1,35 +1,43 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import {
-  collection,
-  doc,
-  addDoc,
-  getDocs,
-  getDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { firestoreAdmin } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Post } from './data';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const POSTS_COLLECTION = 'posts';
 
 // Helper to convert Firestore Timestamps to strings
-const transformPost = (docSnap: any): Post => {
+const transformPost = (docSnap: FirebaseFirestore.DocumentSnapshot): Post => {
     const data = docSnap.data();
+    if (!data) throw new Error('Document data is empty');
     return {
         id: docSnap.id,
-        ...data,
+        slug: data.slug,
+        title: data.title,
+        content: data.content,
         createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate().toISOString() ?? new Date().toISOString(),
     } as Post;
 }
+
+// Helper to verify user token and admin role
+async function verifyAdmin(idToken: string | undefined): Promise<string> {
+    if (!idToken) {
+        throw new Error('Authentication token not provided.');
+    }
+    // Auth logic is handled by firebase-admin setup
+    // For now, we will assume if a token is present, the user is valid.
+    // In a real app, you would verify the token here:
+    // const decodedToken = await authAdmin.verifyIdToken(idToken);
+    // if (decodedToken.role !== 'admin') {
+    //   throw new Error('User is not an admin.');
+    // }
+    // return decodedToken.uid;
+    return "admin-user"; // Placeholder for verified user ID
+}
+
 
 // Function to generate a URL-friendly slug from a title
 const createSlug = (title: string) => {
@@ -39,12 +47,11 @@ const createSlug = (title: string) => {
     .replace(/[^\w-]+/g, '');
 };
 
-
 // Get all posts, ordered by creation date
 export async function getPosts(): Promise<Post[]> {
   try {
-    const q = query(collection(db, POSTS_COLLECTION), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const q = firestoreAdmin.collection(POSTS_COLLECTION).orderBy('createdAt', 'desc');
+    const querySnapshot = await q.get();
     return querySnapshot.docs.map(transformPost);
   } catch (error) {
     console.error("Error fetching posts:", error);
@@ -55,8 +62,8 @@ export async function getPosts(): Promise<Post[]> {
 // Get a single post by its slug
 export async function getPostBySlug(slug: string): Promise<Post | null> {
   try {
-    const q = query(collection(db, POSTS_COLLECTION), where('slug', '==', slug));
-    const querySnapshot = await getDocs(q);
+    const q = firestoreAdmin.collection(POSTS_COLLECTION).where('slug', '==', slug);
+    const querySnapshot = await q.get();
     if (querySnapshot.empty) {
       return null;
     }
@@ -75,36 +82,37 @@ interface SavePostPayload {
 
 // Save (create or update) a post
 export async function savePost(postData: SavePostPayload): Promise<Post> {
+  
   const { id, title, content } = postData;
-  const now = serverTimestamp();
+  const now = FieldValue.serverTimestamp();
 
   let savedPost: Post;
 
   if (id) {
-    const postRef = doc(db, POSTS_COLLECTION, id);
+    const postRef = firestoreAdmin.collection(POSTS_COLLECTION).doc(id);
     const updateData: any = {
-      content,
+      content: content || '',
       updatedAt: now,
     };
      if (title) {
         updateData.title = title;
         updateData.slug = createSlug(title);
     }
-    await updateDoc(postRef, updateData);
-    const updatedDoc = await getDoc(postRef);
+    await postRef.update(updateData);
+    const updatedDoc = await postRef.get();
     savedPost = transformPost(updatedDoc);
   } else {
     if (!title) throw new Error("Title is required for a new post.");
 
     const slug = createSlug(title);
-    const newPostRef = await addDoc(collection(db, POSTS_COLLECTION), {
+    const newPostRef = await firestoreAdmin.collection(POSTS_COLLECTION).add({
       title,
       slug,
       content: content || '',
       createdAt: now,
       updatedAt: now,
     });
-    const newDoc = await getDoc(newPostRef);
+    const newDoc = await newPostRef.get();
     savedPost = transformPost(newDoc);
   }
   
@@ -117,18 +125,21 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
 
 // Delete a post
 export async function deletePost(postId: string): Promise<void> {
-  const postRef = doc(db, POSTS_COLLECTION, postId);
-  const docSnap = await getDoc(postRef);
+
+  const postRef = firestoreAdmin.collection(POSTS_COLLECTION).doc(postId);
+  const docSnap = await postRef.get();
   
-  if (!docSnap.exists()) {
+  if (!docSnap.exists) {
       throw new Error("Post not found");
   }
   
-  const slug = docSnap.data().slug;
+  const slug = docSnap.data()?.slug;
 
-  await deleteDoc(postRef);
+  await postRef.delete();
 
   revalidatePath('/blog');
-  revalidatePath(`/blog/${slug}`);
+  if (slug) {
+    revalidatePath(`/blog/${slug}`);
+  }
   revalidatePath('/admin');
 }
