@@ -10,6 +10,9 @@ import { AuthProvider } from '@/hooks/use-auth';
 export const metadata: Metadata = {
   title: 'Berkan Matematik',
   description: 'Matematikte başarının adresi',
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
