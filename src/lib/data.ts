@@ -1,4 +1,5 @@
 
+
 export interface Resource {
   id: string;
   title: string;
@@ -25,6 +26,15 @@ export interface GradeData {
 export type GradeSlug = '5-sinif' | '6-sinif' | '7-sinif' | 'lgs';
 
 export type CourseData = Record<GradeSlug, GradeData>;
+
+export interface Post {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+}
 
 export const grades: { slug: GradeSlug; name: string; description: string }[] = [
   { slug: '5-sinif', name: '5. Sınıf', description: 'Ortaokulun ilk adımı için tüm konular.' },
