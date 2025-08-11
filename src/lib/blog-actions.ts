@@ -88,7 +88,7 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
     const updateData: any = { 
         content, 
         updatedAt: now,
-        thumbnailUrl: thumbnailUrl ?? null,
+        thumbnailUrl: thumbnailUrl || null,
     };
     if (title) {
         updateData.title = title;
@@ -108,7 +108,7 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
       title,
       slug,
       content: content || '',
-      thumbnailUrl: thumbnailUrl ?? null,
+      thumbnailUrl: thumbnailUrl || null,
       createdAt: now,
       updatedAt: now,
     });

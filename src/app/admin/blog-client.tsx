@@ -11,10 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
-import { PlusCircle, Edit, Trash2, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 
 type BlogClientProps = {
@@ -25,26 +23,17 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentPost, setCurrentPost] = useState<Partial<Post> | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const handleOpenDialog = (post: Partial<Post> | null = null) => {
     setCurrentPost(post);
-    setSelectedFile(null);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setCurrentPost(null);
-    setSelectedFile(null);
     setIsDialogOpen(false);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
   };
 
   const handleSave = async () => {
@@ -55,21 +44,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
     setIsSubmitting(true);
     try {
-      let thumbnailUrl = currentPost.thumbnailUrl;
-
-      // If a new file is selected, upload it
-      if (selectedFile) {
-        const storageRef = ref(storage, `blog-thumbnails/${Date.now()}_${selectedFile.name}`);
-        const snapshot = await uploadBytes(storageRef, selectedFile);
-        thumbnailUrl = await getDownloadURL(snapshot.ref);
-        toast({ title: "Başarılı", description: "Görsel yüklendi." });
-      }
-
       const postToSave = {
         id: currentPost.id,
         title: currentPost.title,
         content: currentPost.content,
-        thumbnailUrl: thumbnailUrl,
+        thumbnailUrl: currentPost.thumbnailUrl,
       };
 
       const savedPost = await savePost(postToSave);
@@ -88,7 +67,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         console.error("Save post error:", error);
         toast({ 
             title: "Hata", 
-            description: "Yazı kaydedilemedi. Lütfen Firestore ve Storage güvenlik kurallarınızı kontrol edin.", 
+            description: "Yazı kaydedilemedi. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", 
             variant: "destructive" 
         });
     } finally {
@@ -173,21 +152,14 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               />
             </div>
              <div className="grid items-center gap-2">
-                <Label htmlFor="thumbnail">Görsel</Label>
+                <Label htmlFor="thumbnailUrl">Görsel URL</Label>
                  <Input
-                    id="thumbnail"
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleFileChange}
+                    id="thumbnailUrl"
+                    placeholder="https://ornek.com/resim.jpg"
+                    value={currentPost?.thumbnailUrl || ''}
+                    onChange={(e) => setCurrentPost({ ...currentPost, thumbnailUrl: e.target.value })}
                     disabled={isSubmitting}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                 />
-                {(selectedFile || currentPost?.thumbnailUrl) && (
-                    <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
-                        <ImageIcon className="w-4 h-4"/>
-                        <span>{selectedFile ? selectedFile.name : "Mevcut görsel korunacak. Değiştirmek için yeni bir dosya seçin."}</span>
-                    </div>
-                )}
             </div>
             <div className="grid items-center gap-2">
               <Label htmlFor="content">İçerik</Label>
@@ -204,7 +176,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
             <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>İptal</Button>
             <Button onClick={handleSave} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedFile && !isSubmitting ? <Upload className="mr-2 h-4 w-4" /> : null}
               Kaydet
             </Button>
           </DialogFooter>
