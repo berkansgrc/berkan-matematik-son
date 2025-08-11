@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Home, LogOut, Shield } from "lucide-react";
+import { Home, LogOut, Shield, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { grades } from "@/lib/data";
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -29,21 +30,39 @@ export function Header() {
               className="transition-transform duration-300 group-hover:scale-105"
             />
         </Link>
-        <nav className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild className="transition-all hover:bg-accent/80 hover:scale-110">
+        <nav className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
             <Link href="/" aria-label="Ana Sayfa">
               <Home className="h-5 w-5" />
               <span className="sr-only">Ana Sayfa</span>
             </Link>
           </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="transition-all hover:bg-accent/80 hover:scale-105">
+                Sınıflar
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {grades.map((grade) => (
+                <DropdownMenuItem key={grade.slug} asChild>
+                  <Link href={`/${grade.slug}`}>{grade.name}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {user && user.role === 'admin' && (
-            <Button variant="ghost" size="icon" asChild className="transition-all hover:bg-accent/80 hover:scale-110">
+            <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
               <Link href="/admin" aria-label="Admin Paneli">
                 <Shield className="h-5 w-5" />
                 <span className="sr-only">Admin Paneli</span>
               </Link>
             </Button>
           )}
+
            {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -64,6 +83,14 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                 {user.role === 'admin' && (
+                    <DropdownMenuItem asChild className="sm:hidden">
+                        <Link href="/admin">
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Admin Paneli</span>
+                        </Link>
+                    </DropdownMenuItem>
+                 )}
                 <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Çıkış Yap</span>
@@ -71,7 +98,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
                <Button asChild variant="outline" size="sm" className="transition-all hover:scale-105">
                 <Link href="/login">Giriş Yap</Link>
               </Button>
