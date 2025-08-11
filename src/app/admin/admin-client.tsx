@@ -50,6 +50,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
   const [currentTitle, setCurrentTitle] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<GradeSlug>(grades[0].slug);
 
   useEffect(() => {
     if (!authLoading) {
@@ -205,14 +206,14 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
   return (
     <>
-      <Tabs defaultValue={grades[0].slug} className="w-full">
+      <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as GradeSlug)} className="w-full">
         <div className="flex justify-between items-center mb-6">
             <TabsList className="grid grid-cols-2 md:grid-cols-4 w-auto">
                 {grades.map(grade => (
                      <TabsTrigger key={grade.slug} value={grade.slug}>{grade.name}</TabsTrigger>
                 ))}
             </TabsList>
-             <Button onClick={() => handleOpenDialog('addSubject', (document.querySelector('[data-state="active"]') as HTMLElement)?.dataset.value as GradeSlug || grades[0].slug)} variant="default">
+             <Button onClick={() => handleOpenDialog('addSubject', activeTab)} variant="default">
                 <PlusCircle className="mr-2 h-4 w-4" /> Yeni Konu Ekle
             </Button>
         </div>
@@ -363,5 +364,3 @@ function getEmptyCourseData(): CourseData {
     });
     return emptyData;
 }
-
-    
