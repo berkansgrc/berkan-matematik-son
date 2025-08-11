@@ -68,7 +68,8 @@ export default async function Home() {
   const allCourseData = await getCourseData();
   
   const allVideos: Resource[] = Object.values(allCourseData)
-    .flatMap(grade => grade.videos || []) // Ensure videos array exists
+    .flatMap(grade => grade.subjects) // Get all subjects from all grades
+    .flatMap(subject => subject.videos || []) // Get all videos from all subjects
     .filter(video => video.createdAt) // Ensure createdAt exists for sorting
     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
     
