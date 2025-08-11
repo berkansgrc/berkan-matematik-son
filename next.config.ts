@@ -22,7 +22,11 @@ const nextConfig: NextConfig = {
         hostname: 'img.youtube.com',
         port: '',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
     ],
   },
   // This is to allow cross-origin requests in the development environment,

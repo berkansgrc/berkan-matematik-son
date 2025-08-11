@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 type BlogClientProps = {
   initialPosts: Post[];
@@ -84,12 +85,25 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map(post => (
           <Card key={post.id} className="flex flex-col">
+            {post.thumbnailUrl && (
+                <div className="relative w-full h-48">
+                    <Image 
+                        src={post.thumbnailUrl} 
+                        alt={post.title}
+                        fill
+                        className="object-cover rounded-t-lg"
+                    />
+                </div>
+            )}
             <CardHeader>
               <CardTitle>{post.title}</CardTitle>
               <CardDescription>
                 Son Güncelleme: {format(new Date(post.updatedAt), 'dd MMMM yyyy, HH:mm')}
               </CardDescription>
             </CardHeader>
+            <CardContent className="flex-grow">
+                {/* We can add a snippet of content here in the future if needed */}
+            </CardContent>
             <CardFooter className="mt-auto flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleOpenDialog(post)}>
                     <Edit className="mr-2 h-4 w-4"/> Düzenle
@@ -107,7 +121,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
           <DialogHeader>
             <DialogTitle>{currentPost?.id ? 'Yazıyı Düzenle' : 'Yeni Yazı Oluştur'}</DialogTitle>
             <DialogDescription>
-              Blog yazınızın başlığını ve içeriğini girin.
+              Blog yazınızın başlığını, içeriğini ve görselini girin.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -117,6 +131,16 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                 id="title"
                 value={currentPost?.title || ''}
                 onChange={(e) => setCurrentPost({ ...currentPost, title: e.target.value })}
+                disabled={isSubmitting}
+              />
+            </div>
+             <div className="grid items-center gap-2">
+              <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
+              <Input
+                id="thumbnailUrl"
+                placeholder="https://ornek.com/resim.jpg"
+                value={currentPost?.thumbnailUrl || ''}
+                onChange={(e) => setCurrentPost({ ...currentPost, thumbnailUrl: e.target.value })}
                 disabled={isSubmitting}
               />
             </div>

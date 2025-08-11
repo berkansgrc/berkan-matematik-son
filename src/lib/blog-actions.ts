@@ -70,13 +70,13 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
 
 // Save (create or update) a post
 export async function savePost(postData: Partial<Post>): Promise<Post> {
-  const { id, title, content } = postData;
+  const { id, title, content, thumbnailUrl } = postData;
   const now = serverTimestamp();
 
   if (id) {
     // Update existing post
     const postRef = doc(db, POSTS_COLLECTION, id);
-    const updateData: any = { content, updatedAt: now };
+    const updateData: any = { content, thumbnailUrl: thumbnailUrl || null, updatedAt: now };
     if (title) { // only update title/slug if title changed
         updateData.title = title;
         updateData.slug = createSlug(title);
@@ -86,6 +86,7 @@ export async function savePost(postData: Partial<Post>): Promise<Post> {
     const updatedDoc = await getDoc(postRef);
     revalidatePath('/blog');
     revalidatePath(`/blog/${updatedDoc.data()?.slug}`);
+    revalidatePath('/admin');
     return transformPost(updatedDoc);
 
   } else {
@@ -97,11 +98,13 @@ export async function savePost(postData: Partial<Post>): Promise<Post> {
       title,
       slug,
       content,
+      thumbnailUrl: thumbnailUrl || null,
       createdAt: now,
       updatedAt: now,
     });
     const newDoc = await getDoc(newPostRef);
     revalidatePath('/blog');
+     revalidatePath('/admin');
     return transformPost(newDoc);
   }
 }
@@ -117,4 +120,5 @@ export async function deletePost(postId: string): Promise<void> {
   await deleteDoc(postRef);
   revalidatePath('/blog');
   revalidatePath(`/blog/${slug}`);
+  revalidatePath('/admin');
 }

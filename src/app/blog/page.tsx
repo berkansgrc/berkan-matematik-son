@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 function truncateText(text: string, length: number) {
     if (text.length <= length) return text;
@@ -26,25 +27,37 @@ export default async function BlogPage() {
       {posts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {posts.map(post => (
-            <Card key={post.id} className="flex flex-col group">
-              <CardHeader>
-                <CardTitle className="text-xl group-hover:text-primary transition-colors">{post.title}</CardTitle>
-                 <CardDescription className="flex items-center text-sm text-muted-foreground pt-2">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    <span>{format(new Date(post.createdAt), 'dd MMMM yyyy')}</span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-muted-foreground">{truncateText(post.content, 150)}</p>
-              </CardContent>
-              <CardFooter>
-                 <Button asChild variant="secondary" className="w-full">
-                    <Link href={`/blog/${post.slug}`}>
-                        Devamını Oku <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
-              </CardFooter>
-            </Card>
+            <Link href={`/blog/${post.slug}`} key={post.id} className="group block">
+                <Card className="flex flex-col h-full overflow-hidden transition-shadow duration-300 hover:shadow-xl">
+                    {post.thumbnailUrl && (
+                        <div className="relative w-full h-48">
+                            <Image
+                                src={post.thumbnailUrl}
+                                alt={post.title}
+                                fill
+                                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                data-ai-hint="math blog post"
+                            />
+                        </div>
+                    )}
+                    <CardHeader>
+                        <CardTitle className="text-xl group-hover:text-primary transition-colors">{post.title}</CardTitle>
+                        <CardDescription className="flex items-center text-sm text-muted-foreground pt-2">
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            <span>{format(new Date(post.createdAt), 'dd MMMM yyyy')}</span>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                        <p className="text-muted-foreground">{truncateText(post.content, post.thumbnailUrl ? 80 : 150)}</p>
+                    </CardContent>
+                    <CardFooter>
+                        <div className="text-sm font-semibold text-primary flex items-center">
+                            Devamını Oku
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                        </div>
+                    </CardFooter>
+                </Card>
+            </Link>
           ))}
         </div>
       ) : (
