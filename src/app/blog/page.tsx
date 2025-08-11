@@ -17,7 +17,7 @@ export default async function BlogPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <header className="mb-8 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight text-primary">Blog</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight text-primary">Punto</h1>
         <p className="mt-2 text-lg text-muted-foreground">
           Matematik dünyasından en son yazılar, ipuçları ve haberler.
         </p>
