@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { courseData as staticCourseData, grades, GradeSlug, GradeData } from './data';
+import { courseData as staticCourseData, grades, GradeSlug, GradeData, Subject } from './data';
 
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
@@ -14,9 +14,7 @@ function getEmptyCourseData(): CourseData {
     grades.forEach(g => {
         emptyData[g.slug] = {
             ...staticCourseData[g.slug], // Keep name and description
-            videos: [],
-            documents: [],
-            applications: [],
+            subjects: [], // Subjects will hold the resources
         };
     });
     return emptyData;
@@ -31,17 +29,21 @@ export async function getCourseData(): Promise<CourseData> {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const data = docSnap.data() as Record<GradeSlug, Omit<GradeData, 'name' | 'description'>>;
-            const transformedData: any = {};
-
-            for (const gradeSlug of Object.keys(staticCourseData)) {
-                const slug = gradeSlug as GradeSlug;
-                transformedData[slug] = {
-                    ...staticCourseData[slug], // Keep static name/desc
-                    ...(data[slug] || { videos: [], documents: [], applications: [] }), // Merge with data from firestore
+            // The document contains the entire CourseData object.
+            const firestoreData = docSnap.data() as CourseData;
+            const mergedData: any = {};
+            
+            // Ensure all grades from static data are present and have static info
+            for (const grade of grades) {
+                const slug = grade.slug;
+                mergedData[slug] = {
+                    name: grade.name,
+                    description: grade.description,
+                    subjects: firestoreData[slug]?.subjects ?? [], // Use subjects from Firestore or empty array
                 };
             }
-            return transformedData;
+            return mergedData;
+
         } else {
             console.log("Course data document not found. Returning empty structure. Admin can add the first resource to create it.");
             // If the document doesn't exist, return a structured object with empty resource arrays

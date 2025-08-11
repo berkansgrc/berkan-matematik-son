@@ -8,15 +8,18 @@ export interface Resource {
 
 export type ResourceCategory = 'videos' | 'documents' | 'applications';
 
-export interface GradeContent {
+export interface Subject {
+  id: string;
+  title: string;
   videos: Resource[];
   documents: Resource[];
   applications: Resource[];
 }
 
-export interface GradeData extends GradeContent {
+export interface GradeData {
   name: string;
   description: string;
+  subjects: Subject[];
 }
 
 export type GradeSlug = '5-sinif' | '6-sinif' | '7-sinif' | 'lgs';
@@ -35,58 +38,46 @@ export const courseData: CourseData = {
   '5-sinif': {
     name: '5. Sınıf',
     description: 'Ortaokulun ilk adımı için tüm konular.',
-    videos: [
-      { id: 'v5-1', title: 'Doğal Sayılarla İşlemler', url: 'https://www.youtube.com', createdAt: '2023-10-26T10:00:00Z' },
-      { id: 'v5-2', title: 'Kesirler ve Kesirlerle İşlemler', url: 'https://www.youtube.com', createdAt: '2023-10-27T11:00:00Z' },
-    ],
-    documents: [
-      { id: 'd5-1', title: '5. Sınıf Konu Anlatım Föyü', url: '#', createdAt: '2023-10-26T10:00:00Z' },
-      { id: 'd5-2', title: 'Doğal Sayılar Çalışma Kağıdı', url: '#', createdAt: '2023-10-27T11:00:00Z' },
-    ],
-    applications: [
-      { id: 'a5-1', title: 'Sayı Örüntüleri Oyunu', url: '#', createdAt: '2023-10-26T10:00:00Z' },
-    ],
+    subjects: [
+        {
+            id: 's5-1',
+            title: 'Doğal Sayılar',
+            videos: [
+                { id: 'v5-1', title: 'Doğal Sayılarla İşlemler', url: 'https://www.youtube.com', createdAt: '2023-10-26T10:00:00Z' },
+            ],
+            documents: [
+                 { id: 'd5-2', title: 'Doğal Sayılar Çalışma Kağıdı', url: '#', createdAt: '2023-10-27T11:00:00Z' },
+            ],
+            applications: [
+                 { id: 'a5-1', title: 'Sayı Örüntüleri Oyunu', url: '#', createdAt: '2023-10-26T10:00:00Z' },
+            ]
+        },
+        {
+            id: 's5-2',
+            title: 'Kesirler',
+            videos: [
+                { id: 'v5-2', title: 'Kesirler ve Kesirlerle İşlemler', url: 'https://www.youtube.com', createdAt: '2023-10-27T11:00:00Z' },
+            ],
+            documents: [
+                { id: 'd5-1', title: '5. Sınıf Konu Anlatım Föyü', url: '#', createdAt: '2023-10-26T10:00:00Z' },
+            ],
+            applications: []
+        }
+    ]
   },
   '6-sinif': {
     name: '6. Sınıf',
     description: 'Matematik temellerini sağlamlaştırın.',
-    videos: [
-      { id: 'v6-1', title: 'Tam Sayılar ve İşlemler', url: 'https://www.youtube.com', createdAt: '2023-10-28T10:00:00Z' },
-      { id: 'v6-2', title: 'Oran ve Orantı', url: 'https://www.youtube.com', createdAt: '2023-10-29T11:00:00Z' },
-    ],
-    documents: [
-      { id: 'd6-1', title: '6. Sınıf Soru Bankası (PDF)', url: '#', createdAt: '2023-10-28T10:00:00Z' },
-    ],
-    applications: [],
+    subjects: []
   },
   '7-sinif': {
     name: '7. Sınıf',
     description: 'LGS öncesi kritik yılın konuları.',
-    videos: [
-      { id: 'v7-1', title: 'Rasyonel Sayılarla İşlemler', url: 'https://www.youtube.com', createdAt: '2023-11-01T10:00:00Z' },
-      { id: 'v7-2', title: 'Cebirsel İfadeler', url: 'https://www.youtube.com', createdAt: '2023-11-02T11:00:00Z' },
-    ],
-    documents: [
-      { id: 'd7-1', title: '7. Sınıf Genel Tekrar Testi', url: '#', createdAt: '2023-11-01T10:00:00Z' },
-    ],
-    applications: [
-      { id: 'a7-1', title: 'Denklem Çözme Simülatörü', url: '#', createdAt: '2023-11-01T10:00:00Z' },
-    ],
+    subjects: []
   },
   lgs: {
     name: 'LGS Hazırlık',
     description: 'Liselere Geçiş Sınavı\'na özel hazırlık.',
-    videos: [
-      { id: 'vlgs-1', title: 'Çarpanlar ve Katlar', url: 'https://www.youtube.com', createdAt: '2023-11-03T10:00:00Z' },
-      { id: 'vlgs-2', title: 'Üslü İfadeler', url: 'https://www.youtube.com', createdAt: '2023-11-04T11:00:00Z' },
-      { id: 'vlgs-3', title: 'Kareköklü İfadeler', url: 'https://www.youtube.com', createdAt: '2023-11-05T12:00:00Z' },
-    ],
-    documents: [
-      { id: 'dlgs-1', title: 'LGS Deneme Sınavı 1 (PDF)', url: '#', createdAt: '2023-11-03T10:00:00Z' },
-      { id: 'dlgs-2', title: 'LGS Çıkmış Sorular', url: '#', createdAt: '2023-11-04T11:00:00Z' },
-    ],
-    applications: [
-      { id: 'algs-1', title: 'LGS Puan Hesaplama', url: '#', createdAt: '2023-11-03T10:00:00Z' },
-    ],
+    subjects: []
   },
 };
