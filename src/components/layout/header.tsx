@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Home, LogOut, Shield, ChevronDown, PenSquare } from "lucide-react";
+import { Home, LogOut, Shield, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -53,13 +53,6 @@ export function Header() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-           <Button variant="ghost" asChild className="transition-all hover:bg-accent/80 hover:scale-105">
-              <Link href="/blog">
-                <PenSquare className="mr-2 h-4 w-4" />
-                Blog
-              </Link>
-            </Button>
 
           {user && user.role === 'admin' && (
             <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
