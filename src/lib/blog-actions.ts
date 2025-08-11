@@ -13,11 +13,13 @@ import {
   query,
   where,
   orderBy,
-  Timestamp,
   serverTimestamp,
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Post } from './data';
+import { ai } from '@/ai/genkit';
+import { z } from 'zod';
+import { withAuth } from '@genkit-ai/next/auth';
 
 const POSTS_COLLECTION = 'posts';
 
@@ -68,57 +70,100 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   }
 }
 
+// Define Zod schemas for input validation
+const PostSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, 'Title is required'),
+  content: z.string().optional(),
+  thumbnailUrl: z.string().url().or(z.literal('')).optional(),
+});
+
+const PostIdSchema = z.string().min(1, 'Post ID is required');
+
+
 // Save (create or update) a post
-export async function savePost(postData: Partial<Post>): Promise<Post> {
-  const { id, title, content, thumbnailUrl } = postData;
-  const now = serverTimestamp();
-
-  if (id) {
-    // Update existing post
-    const postRef = doc(db, POSTS_COLLECTION, id);
-    const updateData: any = { content, thumbnailUrl: thumbnailUrl || null, updatedAt: now };
-    if (title) { // only update title/slug if title changed
-        updateData.title = title;
-        updateData.slug = createSlug(title);
+export const savePost = ai.defineFlow(
+  {
+    name: 'savePost',
+    inputSchema: PostSchema,
+    outputSchema: z.custom<Post>(),
+  },
+  withAuth(async (postData, context) => {
+    const userDocRef = doc(db, 'users', context.auth.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+      throw new Error('Permission denied: Only admins can save posts.');
     }
-    await updateDoc(postRef, updateData);
+
+    const { id, title, content, thumbnailUrl } = postData;
+    const now = serverTimestamp();
+
+    let savedPost: Post;
+
+    if (id) {
+      // Update existing post
+      const postRef = doc(db, POSTS_COLLECTION, id);
+      const updateData: any = { content, thumbnailUrl: thumbnailUrl || null, updatedAt: now };
+      if (title) {
+          updateData.title = title;
+          updateData.slug = createSlug(title);
+      }
+      await updateDoc(postRef, updateData);
+      
+      const updatedDoc = await getDoc(postRef);
+      savedPost = transformPost(updatedDoc);
+      revalidatePath('/blog');
+      revalidatePath(`/blog/${savedPost.slug}`);
+      revalidatePath('/admin');
+    } else {
+      // Create new post
+      if (!title) throw new Error("Title is required for a new post.");
+
+      const slug = createSlug(title);
+      const newPostRef = await addDoc(collection(db, POSTS_COLLECTION), {
+        title,
+        slug,
+        content: content || '',
+        thumbnailUrl: thumbnailUrl || null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const newDoc = await getDoc(newPostRef);
+      savedPost = transformPost(newDoc);
+      revalidatePath('/blog');
+      revalidatePath('/admin');
+    }
     
-    const updatedDoc = await getDoc(postRef);
-    revalidatePath('/blog');
-    revalidatePath(`/blog/${updatedDoc.data()?.slug}`);
-    revalidatePath('/admin');
-    return transformPost(updatedDoc);
-
-  } else {
-    // Create new post
-    if (!title) throw new Error("Title is required for a new post.");
-
-    const slug = createSlug(title);
-    const newPostRef = await addDoc(collection(db, POSTS_COLLECTION), {
-      title,
-      slug,
-      content,
-      thumbnailUrl: thumbnailUrl || null,
-      createdAt: now,
-      updatedAt: now,
-    });
-    const newDoc = await getDoc(newPostRef);
-    revalidatePath('/blog');
-     revalidatePath('/admin');
-    return transformPost(newDoc);
-  }
-}
+    return savedPost;
+  })
+);
 
 // Delete a post
-export async function deletePost(postId: string): Promise<void> {
-  const postRef = doc(db, POSTS_COLLECTION, postId);
-  const docSnap = await getDoc(postRef);
-  if (!docSnap.exists()) throw new Error("Post not found");
-  
-  const slug = docSnap.data().slug;
+export const deletePost = ai.defineFlow(
+  {
+    name: 'deletePost',
+    inputSchema: PostIdSchema,
+    outputSchema: z.void(),
+  },
+  withAuth(async (postId, context) => {
+      const userDocRef = doc(db, 'users', context.auth.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+          throw new Error('Permission denied: Only admins can delete posts.');
+      }
 
-  await deleteDoc(postRef);
-  revalidatePath('/blog');
-  revalidatePath(`/blog/${slug}`);
-  revalidatePath('/admin');
-}
+      const postRef = doc(db, POSTS_COLLECTION, postId);
+      const docSnap = await getDoc(postRef);
+      if (!docSnap.exists()) {
+          throw new Error("Post not found");
+      }
+      
+      const slug = docSnap.data().slug;
+
+      await deleteDoc(postRef);
+
+      revalidatePath('/blog');
+      revalidatePath(`/blog/${slug}`);
+      revalidatePath('/admin');
+  })
+);

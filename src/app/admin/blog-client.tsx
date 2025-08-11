@@ -37,14 +37,21 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   };
 
   const handleSave = async () => {
-    if (!currentPost || !currentPost.title || !currentPost.content) {
-      toast({ title: "Hata", description: "Başlık ve içerik alanları zorunludur.", variant: "destructive" });
+    if (!currentPost || !currentPost.title) {
+      toast({ title: "Hata", description: "Başlık alanı zorunludur.", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const savedPost = await savePost(currentPost);
+      // Use the new Genkit flow for saving
+      const savedPost = await savePost({
+        id: currentPost.id,
+        title: currentPost.title,
+        content: currentPost.content,
+        thumbnailUrl: currentPost.thumbnailUrl,
+      });
+
       if (currentPost.id) {
         // Edit
         setPosts(posts.map(p => p.id === savedPost.id ? savedPost : p));
@@ -65,12 +72,16 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   const handleDelete = async (postId: string) => {
     if (!confirm('Bu yazıyı silmek istediğinizden emin misiniz?')) return;
     
+    setIsSubmitting(true);
     try {
+        // Use the new Genkit flow for deleting
         await deletePost(postId);
         setPosts(posts.filter(p => p.id !== postId));
         toast({ title: 'Başarılı', description: 'Yazı silindi.' });
     } catch (error: any) {
-        toast({ title: 'Hata', description: 'Yazı silinirken bir hata oluştu.', variant: 'destructive' });
+        toast({ title: 'Hata', description: error.message || 'Yazı silinirken bir hata oluştu.', variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
