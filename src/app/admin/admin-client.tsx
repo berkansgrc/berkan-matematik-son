@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, GripVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, GripVertical, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 type AdminClientProps = {
@@ -363,3 +363,5 @@ function getEmptyCourseData(): CourseData {
     });
     return emptyData;
 }
+
+    
