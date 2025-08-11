@@ -82,7 +82,7 @@ export default async function Home() {
           <div className="text-white text-center md:text-left">
             <TypewriterHero />
           </div>
-          <div className="hidden md:flex justify-end items-end h-full">
+          <div className="hidden md:flex justify-center items-center h-full">
             <HeroAnimation className="w-full max-w-md h-auto opacity-90" />
           </div>
         </div>
