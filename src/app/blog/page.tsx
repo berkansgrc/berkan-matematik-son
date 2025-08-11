@@ -29,17 +29,6 @@ export default async function BlogPage() {
           {posts.map(post => (
             <Link href={`/blog/${post.slug}`} key={post.id} className="group block">
                 <Card className="flex flex-col h-full overflow-hidden transition-shadow duration-300 hover:shadow-xl">
-                    {post.thumbnailUrl && (
-                        <div className="relative w-full h-48">
-                            <Image
-                                src={post.thumbnailUrl}
-                                alt={post.title}
-                                fill
-                                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                data-ai-hint="math blog post"
-                            />
-                        </div>
-                    )}
                     <CardHeader>
                         <CardTitle className="text-xl group-hover:text-primary transition-colors">{post.title}</CardTitle>
                         <CardDescription className="flex items-center text-sm text-muted-foreground pt-2">
@@ -48,7 +37,7 @@ export default async function BlogPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow">
-                        <p className="text-muted-foreground">{truncateText(post.content, post.thumbnailUrl ? 80 : 150)}</p>
+                        <p className="text-muted-foreground">{truncateText(post.content, 150)}</p>
                     </CardContent>
                     <CardFooter>
                         <div className="text-sm font-semibold text-primary flex items-center">

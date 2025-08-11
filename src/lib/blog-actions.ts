@@ -75,7 +75,6 @@ const PostSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1, 'Title is required'),
   content: z.string().optional(),
-  thumbnailUrl: z.string().url().or(z.literal('')).optional(),
 });
 
 const PostIdSchema = z.string().min(1, 'Post ID is required');
@@ -95,7 +94,7 @@ export const savePost = ai.defineFlow(
       throw new Error('Permission denied: Only admins can save posts.');
     }
 
-    const { id, title, content, thumbnailUrl } = postData;
+    const { id, title, content } = postData;
     const now = serverTimestamp();
 
     let savedPost: Post;
@@ -103,7 +102,7 @@ export const savePost = ai.defineFlow(
     if (id) {
       // Update existing post
       const postRef = doc(db, POSTS_COLLECTION, id);
-      const updateData: any = { content, thumbnailUrl: thumbnailUrl || null, updatedAt: now };
+      const updateData: any = { content, updatedAt: now };
       if (title) {
           updateData.title = title;
           updateData.slug = createSlug(title);
@@ -124,7 +123,6 @@ export const savePost = ai.defineFlow(
         title,
         slug,
         content: content || '',
-        thumbnailUrl: thumbnailUrl || null,
         createdAt: now,
         updatedAt: now,
       });
