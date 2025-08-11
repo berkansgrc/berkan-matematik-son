@@ -7,7 +7,8 @@ import { ArrowRight, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 
-function truncateText(text: string, length: number) {
+function truncateText(text: string | undefined, length: number) {
+    if (!text) return '';
     if (text.length <= length) return text;
     return text.substring(0, length) + '...';
 }
@@ -29,6 +30,18 @@ export default async function BlogPage() {
           {posts.map(post => (
             <Link href={`/blog/${post.slug}`} key={post.id} className="group block">
                 <Card className="flex flex-col h-full overflow-hidden transition-shadow duration-300 hover:shadow-xl">
+                    {post.thumbnailUrl && (
+                      <div className="relative h-48 w-full">
+                         <Image 
+                           src={post.thumbnailUrl}
+                           alt={post.title}
+                           layout="fill"
+                           objectFit="cover"
+                           className="transition-transform duration-300 group-hover:scale-105"
+                           data-ai-hint="math lesson"
+                         />
+                      </div>
+                    )}
                     <CardHeader>
                         <CardTitle className="text-xl group-hover:text-primary transition-colors">{post.title}</CardTitle>
                         <CardDescription className="flex items-center text-sm text-muted-foreground pt-2">
@@ -37,7 +50,7 @@ export default async function BlogPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow">
-                        <p className="text-muted-foreground">{truncateText(post.content, 150)}</p>
+                        <p className="text-muted-foreground">{truncateText(post.content, 100)}</p>
                     </CardContent>
                     <CardFooter>
                         <div className="text-sm font-semibold text-primary flex items-center">

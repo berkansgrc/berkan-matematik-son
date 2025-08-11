@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 export async function generateStaticParams() {
   const posts = await getPosts();
@@ -37,6 +38,18 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                 </time>
             </div>
         </header>
+
+        {post.thumbnailUrl && (
+            <div className="relative aspect-video w-full mb-8 rounded-lg overflow-hidden">
+                <Image 
+                    src={post.thumbnailUrl} 
+                    alt={post.title}
+                    layout="fill"
+                    objectFit="cover"
+                    priority
+                />
+            </div>
+        )}
 
         {/* Using a div to render content with preserved whitespace */}
         <div className="whitespace-pre-wrap text-foreground/90">

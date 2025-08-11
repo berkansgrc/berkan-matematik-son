@@ -67,21 +67,17 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   }
 }
 
-// Note: For these actions to work from the client, you must have Firestore security rules
-// that validate the user's role (e.g., check if the user is an admin).
-// The client-side code in `blog-client.tsx` should ideally only be rendered for admins.
-
 interface SavePostPayload {
   id?: string;
   title: string;
   content?: string;
+  thumbnailUrl?: string;
 }
 
 // Save (create or update) a post
 export async function savePost(postData: SavePostPayload): Promise<Post> {
   // Security should be enforced by Firestore rules.
-  // Example Rule: allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-  const { id, title, content } = postData;
+  const { id, title, content, thumbnailUrl } = postData;
   const now = serverTimestamp();
 
   let savedPost: Post;
@@ -89,7 +85,11 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
   if (id) {
     // Update existing post
     const postRef = doc(db, POSTS_COLLECTION, id);
-    const updateData: any = { content, updatedAt: now };
+    const updateData: any = { 
+        content, 
+        updatedAt: now,
+        thumbnailUrl: thumbnailUrl ?? null,
+    };
     if (title) {
         updateData.title = title;
         updateData.slug = createSlug(title);
@@ -98,9 +98,7 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
     
     const updatedDoc = await getDoc(postRef);
     savedPost = transformPost(updatedDoc);
-    revalidatePath('/blog');
-    revalidatePath(`/blog/${savedPost.slug}`);
-    revalidatePath('/admin');
+    
   } else {
     // Create new post
     if (!title) throw new Error("Title is required for a new post.");
@@ -110,14 +108,17 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
       title,
       slug,
       content: content || '',
+      thumbnailUrl: thumbnailUrl ?? null,
       createdAt: now,
       updatedAt: now,
     });
     const newDoc = await getDoc(newPostRef);
     savedPost = transformPost(newDoc);
-    revalidatePath('/blog');
-    revalidatePath('/admin');
   }
+  
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${savedPost.slug}`);
+  revalidatePath('/admin');
   
   return savedPost;
 }
