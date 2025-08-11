@@ -65,12 +65,14 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         toast({ title: "Başarılı", description: "Görsel yüklendi." });
       }
 
-      const savedPost = await savePost({
+      const postToSave = {
         id: currentPost.id,
         title: currentPost.title,
         content: currentPost.content,
         thumbnailUrl: thumbnailUrl,
-      });
+      };
+
+      const savedPost = await savePost(postToSave);
 
       if (currentPost.id) {
         // Edit
@@ -84,7 +86,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       handleCloseDialog();
     } catch (error: any) {
         console.error("Save post error:", error);
-      toast({ title: "Hata", description: "İşlem sırasında bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı ve dosya yükleme izinlerini kontrol edin.", variant: "destructive" });
+        toast({ 
+            title: "Hata", 
+            description: "Yazı kaydedilemedi. Lütfen Firestore ve Storage güvenlik kurallarınızı kontrol edin.", 
+            variant: "destructive" 
+        });
     } finally {
       setIsSubmitting(false);
     }
@@ -99,7 +105,12 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         setPosts(posts.filter(p => p.id !== postId));
         toast({ title: 'Başarılı', description: 'Yazı silindi.' });
     } catch (error: any) {
-        toast({ title: 'Hata', description: "Yazı silinirken bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", variant: 'destructive' });
+        console.error("Delete post error:", error);
+        toast({ 
+            title: 'Hata', 
+            description: "Yazı silinirken bir hata oluştu. Lütfen Firestore güvenlik kurallarınızı kontrol edin.", 
+            variant: 'destructive' 
+        });
     } finally {
         setIsSubmitting(false);
     }
@@ -131,18 +142,19 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                 {/* We can add a snippet of content here in the future if needed */}
             </CardContent>
             <CardFooter className="mt-auto flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleOpenDialog(post)}>
+                <Button variant="outline" size="sm" onClick={() => handleOpenDialog(post)} disabled={isSubmitting}>
                     <Edit className="mr-2 h-4 w-4"/> Düzenle
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(post.id)}>
-                    <Trash2 className="mr-2 h-4 w-4"/> Sil
+                <Button variant="destructive" size="sm" onClick={() => handleDelete(post.id)} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
+                     Sil
                 </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={!isSubmitting ? setIsDialogOpen : undefined}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{currentPost?.id ? 'Yazıyı Düzenle' : 'Yeni Yazı Oluştur'}</DialogTitle>
@@ -192,7 +204,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
             <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>İptal</Button>
             <Button onClick={handleSave} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedFile ? <Upload className="mr-2 h-4 w-4" /> : null}
+              {selectedFile && !isSubmitting ? <Upload className="mr-2 h-4 w-4" /> : null}
               Kaydet
             </Button>
           </DialogFooter>
