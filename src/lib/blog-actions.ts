@@ -71,36 +71,29 @@ interface SavePostPayload {
   id?: string;
   title: string;
   content?: string;
-  thumbnailUrl?: string;
 }
 
 // Save (create or update) a post
 export async function savePost(postData: SavePostPayload): Promise<Post> {
-  // Security should be enforced by Firestore rules.
-  const { id, title, content, thumbnailUrl } = postData;
+  const { id, title, content } = postData;
   const now = serverTimestamp();
 
   let savedPost: Post;
 
   if (id) {
-    // Update existing post
     const postRef = doc(db, POSTS_COLLECTION, id);
-    const updateData: any = { 
-        content, 
-        updatedAt: now,
-        thumbnailUrl: thumbnailUrl || null,
+    const updateData: any = {
+      content,
+      updatedAt: now,
     };
-    if (title) {
+     if (title) {
         updateData.title = title;
         updateData.slug = createSlug(title);
     }
     await updateDoc(postRef, updateData);
-    
     const updatedDoc = await getDoc(postRef);
     savedPost = transformPost(updatedDoc);
-    
   } else {
-    // Create new post
     if (!title) throw new Error("Title is required for a new post.");
 
     const slug = createSlug(title);
@@ -108,7 +101,6 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
       title,
       slug,
       content: content || '',
-      thumbnailUrl: thumbnailUrl || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -125,7 +117,6 @@ export async function savePost(postData: SavePostPayload): Promise<Post> {
 
 // Delete a post
 export async function deletePost(postId: string): Promise<void> {
-  // Security should be enforced by Firestore rules.
   const postRef = doc(db, POSTS_COLLECTION, postId);
   const docSnap = await getDoc(postRef);
   
