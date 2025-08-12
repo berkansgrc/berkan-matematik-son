@@ -2,9 +2,8 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { courseData as staticCourseData, grades, GradeSlug, Quiz, CourseData, Resource } from './data';
-import { revalidatePath } from 'next/cache';
+import { doc, getDoc } from 'firebase/firestore';
+import { courseData as staticCourseData, grades, Quiz, CourseData } from './data';
 
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
@@ -22,7 +21,6 @@ function getEmptyCourseData(): CourseData {
     return emptyData;
 }
 
-
 // Fetches all course data from the single document in Firestore.
 // This function runs on the server and is readable by everyone.
 export async function getCourseData(): Promise<CourseData> {
@@ -31,7 +29,6 @@ export async function getCourseData(): Promise<CourseData> {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            // The document contains the entire CourseData object.
             const firestoreData = docSnap.data() as CourseData;
             const mergedData: any = {};
             
@@ -47,78 +44,16 @@ export async function getCourseData(): Promise<CourseData> {
             return mergedData;
 
         } else {
-            console.log("Course data document not found. Returning empty structure. Admin can add the first resource to create it.");
-            // If the document doesn't exist, return a structured object with empty resource arrays
-            return getEmptyCourseData();
+            console.log("Course data document not found. Initializing with empty structure.");
+            // If the document doesn't exist, create it with an empty structure
+            const emptyData = getEmptyCourseData();
+            await setDoc(docRef, emptyData);
+            return emptyData;
         }
     } catch(error) {
         console.error("Error fetching course data:", error);
-        // On permission errors, return empty data to allow the page to render.
         return getEmptyCourseData();
     }
-}
-
-
-export async function saveQuizAndAddAsResource(
-  quiz: Quiz,
-  gradeSlug: GradeSlug,
-  subjectId: string,
-) {
-  if (!quiz || !gradeSlug || !subjectId) {
-    throw new Error('Eksik parametre: quiz, gradeSlug, and subjectId gereklidir.');
-  }
-
-  try {
-    // 1. Save the quiz to its own collection for easy retrieval
-    const quizDocRef = doc(db, QUIZZES_COLLECTION, quiz.id);
-    await setDoc(quizDocRef, quiz);
-
-    // 2. Create the resource object to be added to the course data
-    const quizResource: Resource = {
-      id: quiz.id, // Use quiz ID for consistency
-      title: quiz.title,
-      url: `/quiz/${quiz.id}`,
-      createdAt: quiz.createdAt,
-    };
-
-    // 3. Update the main course document using the read-modify-write pattern
-    const courseDocRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-    const courseDocSnap = await getDoc(courseDocRef);
-
-    if (!courseDocSnap.exists()) {
-        throw new Error('Ana ders dökümanı bulunamadı.');
-    }
-
-    const courseData = courseDocSnap.data() as CourseData;
-
-    // Deep copy the subjects for the specific grade to avoid mutation issues
-    const updatedSubjects = JSON.parse(JSON.stringify(courseData[gradeSlug].subjects));
-    
-    const subjectIndex = updatedSubjects.findIndex((s: Subject) => s.id === subjectId);
-    
-    if (subjectIndex === -1) {
-      throw new Error(`Ders konusu (ID: ${subjectId}) ${gradeSlug} sınıfında bulunamadı.`);
-    }
-
-    // Add the new quiz resource to the applications array of the found subject
-    updatedSubjects[subjectIndex].applications.push(quizResource);
-    
-    // 4. Write the modified subjects array back to Firestore
-    const fieldPath = `${gradeSlug}.subjects`;
-    await updateDoc(courseDocRef, {
-      [fieldPath]: updatedSubjects
-    });
-    
-    // 5. Revalidate paths to show changes immediately
-    revalidatePath('/admin');
-    revalidatePath(`/${gradeSlug}`);
-
-    return { success: true, quizId: quiz.id };
-  } catch (error: any) {
-    console.error('Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu:', error);
-    // Throw a more specific error to the client
-    throw new Error(`Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu: ${error.message}`);
-  }
 }
 
 export async function getQuizData(quizId: string): Promise<Quiz | null> {

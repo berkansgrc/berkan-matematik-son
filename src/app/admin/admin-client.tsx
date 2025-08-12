@@ -8,7 +8,7 @@ import { grades } from '@/lib/data';
 import { getCourseData } from '@/lib/course-actions';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, collection, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, updateDoc } from 'firebase/firestore';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -16,10 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, GripVertical, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type AdminClientProps = {
   initialData: CourseData;
@@ -103,25 +102,25 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
         if (!grade) throw new Error("Sınıf seçimi yapılmadı.");
 
-        let gradeSubjects = currentData[grade]?.subjects ?? [];
+        let gradeData = JSON.parse(JSON.stringify(currentData[grade] ?? getEmptyCourseData()[grade]));
         
         switch(mode) {
             case 'addSubject':
                 const newSubject: Subject = { id: doc(collection(db, '_')).id, title: currentTitle, videos: [], documents: [], applications: [] };
-                gradeSubjects.push(newSubject);
+                gradeData.subjects.push(newSubject);
                 toast({ title: "Başarılı", description: "Yeni konu eklendi." });
                 break;
             
             case 'editSubject':
                 if (!subject) throw new Error("Konu bulunamadı.");
-                gradeSubjects = gradeSubjects.map(s => s.id === subject.id ? { ...s, title: currentTitle } : s);
+                gradeData.subjects = gradeData.subjects.map((s: Subject) => s.id === subject.id ? { ...s, title: currentTitle } : s);
                 toast({ title: "Başarılı", description: "Konu güncellendi." });
                 break;
             
             case 'addResource':
                 if (!subject || !category) throw new Error("Konu veya kategori bulunamadı.");
                 const newResource: Resource = { id: doc(collection(db, '_')).id, title: currentTitle, url: currentUrl, createdAt: new Date().toISOString() };
-                gradeSubjects = gradeSubjects.map(s => {
+                gradeData.subjects = gradeData.subjects.map((s: Subject) => {
                     if (s.id === subject.id) {
                         return { ...s, [category]: [...s[category], newResource] };
                     }
@@ -132,9 +131,9 @@ export function AdminClient({ initialData }: AdminClientProps) {
 
             case 'editResource':
                 if (!subject || !category || !resource) throw new Error("Konu, kategori veya kaynak bulunamadı.");
-                 gradeSubjects = gradeSubjects.map(s => {
+                 gradeData.subjects = gradeData.subjects.map((s: Subject) => {
                     if (s.id === subject.id) {
-                       const updatedCategoryResources = s[category].map(r => r.id === resource.id ? { ...r, title: currentTitle, url: currentUrl } : r);
+                       const updatedCategoryResources = s[category].map((r: Resource) => r.id === resource.id ? { ...r, title: currentTitle, url: currentUrl } : r);
                        return { ...s, [category]: updatedCategoryResources };
                     }
                     return s;
@@ -143,7 +142,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
                 break;
         }
 
-        await setDoc(docRef, { ...currentData, [grade]: { ...currentData[grade], subjects: gradeSubjects } });
+        await updateDoc(docRef, { [grade]: gradeData });
         
         handleCloseDialog();
         await refreshData();
@@ -167,12 +166,12 @@ export function AdminClient({ initialData }: AdminClientProps) {
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) throw new Error("Veritabanı dökümanı bulunamadı.");
       const currentData = docSnap.data() as CourseData;
-      let gradeSubjects = currentData[grade]?.subjects ?? [];
+      let gradeData = JSON.parse(JSON.stringify(currentData[grade]));
       
       if (resourceToDelete && subjectToDelete && category) { // Delete a resource
-        gradeSubjects = gradeSubjects.map(s => {
+        gradeData.subjects = gradeData.subjects.map((s: Subject) => {
             if (s.id === subjectToDelete.id) {
-                const updatedCategory = s[category].filter(r => r.id !== resourceToDelete.id);
+                const updatedCategory = s[category].filter((r: Resource) => r.id !== resourceToDelete.id);
                 return { ...s, [category]: updatedCategory };
             }
             return s;
@@ -182,11 +181,11 @@ export function AdminClient({ initialData }: AdminClientProps) {
          if (subjectToDelete.videos.length > 0 || subjectToDelete.documents.length > 0 || subjectToDelete.applications.length > 0) {
             if (!confirm("Bu konunun içinde kaynaklar var. Konuyu silerseniz içindeki tüm kaynaklar da silinir. Emin misiniz?")) return;
         }
-        gradeSubjects = gradeSubjects.filter(s => s.id !== subjectToDelete.id);
+        gradeData.subjects = gradeData.subjects.filter((s: Subject) => s.id !== subjectToDelete.id);
         toast({ title: "Başarılı", description: "Konu ve içindeki tüm kaynaklar silindi." });
       }
 
-      await setDoc(docRef, { ...currentData, [grade]: { ...currentData[grade], subjects: gradeSubjects } });
+      await updateDoc(docRef, { [grade]: gradeData });
       await refreshData();
 
     } catch (error: any) {
@@ -362,5 +361,5 @@ function getEmptyCourseData(): CourseData {
             subjects: [],
         };
     });
-    return emptyData;
+    return emptyData as CourseData;
 }

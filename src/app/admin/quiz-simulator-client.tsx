@@ -3,9 +3,10 @@
 
 import { useState, useMemo } from 'react';
 import { generateQuiz, type Quiz as AIGeneratedQuiz } from '@/ai/flows/quiz-generator-flow';
-import { saveQuizAndAddAsResource } from '@/lib/course-actions';
-import type { CourseData, GradeSlug, Subject, Quiz, Question } from '@/lib/data';
+import type { CourseData, GradeSlug, Quiz, Resource, Subject } from '@/lib/data';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,10 @@ import { Textarea } from '@/components/ui/textarea';
 type QuizSimulatorClientProps = {
     courseData: CourseData;
 }
+
+const COURSE_COLLECTION = 'courseData';
+const SINGLE_DOCUMENT_ID = 'allGrades';
+const QUIZZES_COLLECTION = 'quizzes';
 
 export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
   const [topic, setTopic] = useState('');
@@ -79,21 +84,51 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
             createdAt: new Date().toISOString(),
         };
 
-        const result = await saveQuizAndAddAsResource(quizToSave, selectedGrade, selectedSubject);
+        // 1. Save the quiz to its own collection
+        const quizDocRef = doc(db, QUIZZES_COLLECTION, quizToSave.id);
+        await setDoc(quizDocRef, quizToSave);
 
-        if (result.success) {
-            toast({
-                title: "Başarılı!",
-                description: `Test başarıyla kaydedildi ve "${subjectData.title}" konusunun uygulamalar bölümüne eklendi.`,
-            });
-            // Reset state
-            setGeneratedQuiz(null);
-            setTopic('');
-            setPrompt('');
-            // We keep the grade and subject selected to make it easier to add more quizzes
-        } else {
-             throw new Error('Sunucudan beklenmedik bir yanıt geldi.');
+        // 2. Create the resource link
+        const quizResource: Resource = {
+            id: quizToSave.id,
+            title: quizToSave.title,
+            url: `/quiz/${quizToSave.id}`,
+            createdAt: quizToSave.createdAt,
+        };
+
+        // 3. Add the resource link to the course data document
+        const courseDocRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+        const courseDocSnap = await getDoc(courseDocRef);
+
+        if (!courseDocSnap.exists()) {
+            throw new Error('Ana ders dökümanı bulunamadı.');
         }
+        const currentCourseData = courseDocSnap.data() as CourseData;
+        const gradeData = JSON.parse(JSON.stringify(currentCourseData[selectedGrade]));
+
+        const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === selectedSubject);
+        if (subjectIndex === -1) {
+            throw new Error(`Ders konusu (ID: ${selectedSubject}) ${selectedGrade} sınıfında bulunamadı.`);
+        }
+
+        gradeData.subjects[subjectIndex].applications.push(quizResource);
+
+        // Update only the specific grade's data
+        await updateDoc(courseDocRef, {
+            [selectedGrade]: gradeData
+        });
+
+
+        toast({
+            title: "Başarılı!",
+            description: `Test başarıyla kaydedildi ve "${subjectData.title}" konusunun uygulamalar bölümüne eklendi.`,
+        });
+
+        // Reset state
+        setGeneratedQuiz(null);
+        setTopic('');
+        setPrompt('');
+        
     } catch (err: any) {
         console.error("Quiz save error:", err);
         toast({ title: "Kaydetme Hatası", description: err.message || "Bilinmeyen bir hata oluştu.", variant: "destructive"});
