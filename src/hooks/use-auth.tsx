@@ -8,9 +8,6 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   User as FirebaseAuthUser,
-  GoogleAuthProvider,
-  signInWithPopup,
-  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -25,7 +22,6 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, pass: string) => Promise<any>;
   signIn: (email: string, pass: string) => Promise<any>;
-  signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
 }
 
@@ -78,24 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    const additionalInfo = getAdditionalUserInfo(result);
-    
-    if (additionalInfo?.isNewUser) {
-        const firebaseUser = result.user;
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        await setDoc(userDocRef, {
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            role: 'student' // Default role for new Google sign-ins
-        });
-    }
-    return result;
-  }
-
   const signOut = async () => {
     await firebaseSignOut(auth);
     router.push('/login');
@@ -106,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signUp,
     signIn,
-    signInWithGoogle,
     signOut,
   };
 
