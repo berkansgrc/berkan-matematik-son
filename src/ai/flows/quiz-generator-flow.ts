@@ -1,75 +1,71 @@
-
-'use server';
-/**
- * @fileOverview Bir matematik konusu için AI tabanlı bir quiz üretici.
- *
- * - generateQuiz - Belirtilen konu ve sınıf seviyesi için bir test oluşturan fonksiyon.
- * - QuizInput - generateQuiz fonksiyonu için giriş tipi.
- * - QuizOutput - generateQuiz fonksiyonu için dönüş tipi.
- */
-
-import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-
-// Zod şemaları, giriş ve çıkış verilerinin yapısını tanımlar.
-const QuizInputSchema = z.object({
-  topic: z.string().describe('Testin oluşturulacağı matematik konusu.'),
-  grade: z.string().describe('Testin hedeflediği sınıf seviyesi (örn: 5. Sınıf, LGS Hazırlık).'),
-  prompt: z.string().optional().describe('Quiz oluşturma için ek talimatlar.'),
-});
-export type QuizInput = z.infer<typeof QuizInputSchema>;
-
-const QuestionSchema = z.object({
-    questionText: z.string().describe("Sorunun metni."),
-    options: z.array(z.string()).length(4).describe("Soru için 4 adet seçenek. Örn: ['15', '20', '25', '30']"),
-    correctAnswer: z.enum(["A", "B", "C", "D"]).describe("Doğru olan seçeneğin harfi (A, B, C, veya D).")
-});
-
-const QuizOutputSchema = z.object({
-  questions: z.array(QuestionSchema).length(5).describe('Konuyla ilgili 5 adet çoktan seçmeli soru.'),
-});
-export type Quiz = z.infer<typeof QuizOutputSchema>;
-
-
-// Bu, dışa aktarılan ve istemci tarafından çağrılacak olan ana fonksiyondur.
-export async function generateQuiz(input: QuizInput): Promise<Quiz> {
-  return generateQuizFlow(input);
-}
-
-// Genkit prompt'u, AI modeline ne yapacağını söyleyen şablondur.
-const quizPrompt = ai.definePrompt({
-  name: 'quizGeneratorPrompt',
-  input: { schema: QuizInputSchema },
-  output: { schema: QuizOutputSchema },
-  prompt: `
-    Sen, {{grade}} seviyesindeki öğrenciler için matematik testleri hazırlayan uzman bir öğretmensin.
-    
-    Aşağıdaki konuyla ilgili, 5 soruluk, her biri 4 seçenekli (A, B, C, D) bir çoktan seçmeli test hazırla.
-    
-    Konu: {{{topic}}}
-    
-    Her soru için, sorunun metnini, dört adet seçeneği ve doğru cevabın harfini (A, B, C veya D) belirt.
-    Soruların zorluk seviyesi {{grade}} düzeyine uygun olmalıdır. Çıktıyı istenen JSON formatında sağla.
-
-    {{#if prompt}}
-    Ek Talimatlar:
-    {{{prompt}}}
-    {{/if}}
-  `,
-});
-
-// Genkit flow'u, bir veya daha fazla adımı (prompt'lar, araçlar vb.) yönetir.
-const generateQuizFlow = ai.defineFlow(
-  {
-    name: 'generateQuizFlow',
-    inputSchema: QuizInputSchema,
-    outputSchema: QuizOutputSchema,
+{
+  "name": "nextn",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 9002",
+    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
+    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
-  async (input) => {
-    const { output } = await quizPrompt(input);
-    if (!output) {
-      throw new Error("AI modeli bir yanıt döndürmedi.");
-    }
-    return output;
+  "dependencies": {
+    "@genkit-ai/googleai": "^1.14.1",
+    "@genkit-ai/next": "^1.14.1",
+    "@hookform/resolvers": "^4.1.3",
+    "@radix-ui/react-accordion": "^1.2.3",
+    "@radix-ui/react-alert-dialog": "^1.1.6",
+    "@radix-ui/react-avatar": "^1.1.3",
+    "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-collapsible": "^1.1.11",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-dropdown-menu": "^2.1.6",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-menubar": "^1.1.6",
+    "@radix-ui/react-popover": "^1.1.6",
+    "@radix-ui/react-progress": "^1.1.2",
+    "@radix-ui/react-radio-group": "^1.2.3",
+    "@radix-ui/react-scroll-area": "^1.2.3",
+    "@radix-ui/react-select": "^2.1.6",
+    "@radix-ui/react-separator": "^1.1.2",
+    "@radix-ui/react-slider": "^1.2.3",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-switch": "^1.1.3",
+    "@radix-ui/react-tabs": "^1.1.3",
+    "@radix-ui/react-toast": "^1.2.6",
+    "@radix-ui/react-tooltip": "^1.1.8",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "dotenv": "^16.5.0",
+    "embla-carousel-react": "^8.6.0",
+    "firebase": "^11.9.1",
+    "genkit": "^1.14.1",
+    "lucide-react": "^0.417.0",
+    "lottie-react": "^2.4.0",
+    "lottie-web": "^5.12.2",
+    "next": "15.3.3",
+    "patch-package": "^8.0.0",
+    "react": "^18.3.1",
+    "react-day-picker": "^8.10.1",
+    "react-dom": "^18.3.1",
+    "react-dom-confetti": "^0.2.0",
+    "react-hook-form": "^7.54.2",
+    "react-type-animation": "^3.2.0",
+    "recharts": "^2.15.1",
+    "tailwind-merge": "^3.0.1",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "genkit-cli": "^1.14.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
-);
+}
