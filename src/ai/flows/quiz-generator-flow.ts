@@ -15,6 +15,7 @@ import { z } from 'zod';
 const QuizInputSchema = z.object({
   topic: z.string().describe('Testin oluşturulacağı matematik konusu.'),
   grade: z.string().describe('Testin hedeflediği sınıf seviyesi (örn: 5. Sınıf, LGS Hazırlık).'),
+  prompt: z.string().optional().describe('Quiz oluşturma için ek talimatlar.'),
 });
 export type QuizInput = z.infer<typeof QuizInputSchema>;
 
@@ -49,6 +50,11 @@ const quizPrompt = ai.definePrompt({
     
     Her soru için, sorunun metnini, dört adet seçeneği ve doğru cevabın harfini (A, B, C veya D) belirt.
     Soruların zorluk seviyesi {{grade}} düzeyine uygun olmalıdır. Çıktıyı istenen JSON formatında sağla.
+
+    {{#if prompt}}
+    Ek Talimatlar:
+    {{{prompt}}}
+    {{/if}}
   `,
 });
 

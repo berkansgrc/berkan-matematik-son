@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Wand2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from '@/components/ui/textarea';
 
 type QuizSimulatorClientProps = {
     courseData: CourseData;
@@ -21,6 +22,7 @@ type QuizSimulatorClientProps = {
 
 export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
   const [topic, setTopic] = useState('');
+  const [prompt, setPrompt] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<GradeSlug | ''>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +46,7 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
     setGeneratedQuiz(null);
     try {
         const gradeName = courseData[selectedGrade].name;
-        const result = await generateQuiz({ topic, grade: gradeName });
+        const result = await generateQuiz({ topic, grade: gradeName, prompt });
         if (!result || !result.questions || result.questions.length === 0) {
             throw new Error("Yapay zeka bir test üretemedi. Lütfen konuyu daha spesifik hale getirin.");
         }
@@ -83,6 +85,7 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
             // Reset state
             setGeneratedQuiz(null);
             setTopic('');
+            setPrompt('');
             setSelectedGrade('');
             setSelectedSubject('');
         }
@@ -131,6 +134,17 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div className="grid gap-2">
+            <Label htmlFor="prompt">Ek Talimatlar (İsteğe Bağlı)</Label>
+            <Textarea
+                id="prompt"
+                placeholder="Örn: Sorular daha çok problem çözme odaklı olsun. Bir soru mutlaka denklem içersin."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                disabled={isLoading || isSaving}
+                className="min-h-[100px]"
+            />
         </div>
         {selectedGrade && (
              <div className="grid gap-2">
@@ -201,4 +215,3 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
     </Card>
   );
 }
-
