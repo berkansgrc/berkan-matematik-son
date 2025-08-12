@@ -8,6 +8,9 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   User as FirebaseAuthUser,
+  GoogleAuthProvider,
+  signInWithPopup,
+  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -22,6 +25,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, pass: string) => Promise<any>;
   signIn: (email: string, pass: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
 }
 
@@ -40,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
            setUser({ ...firebaseUser, ...userDocSnap.data() });
         } else {
-           setUser(firebaseUser);
+           // This case can happen if a user was created in Firebase Auth but not in Firestore
+           // e.g., if the registration process was interrupted.
+           // We can create the user doc here as a fallback.
+           const newUserDoc = { email: firebaseUser.email, role: 'student', name: firebaseUser.displayName };
+           await setDoc(userDocRef, newUserDoc);
+           setUser({ ...firebaseUser, ...newUserDoc });
         }
       } else {
         setUser(null);
@@ -69,6 +78,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const additionalInfo = getAdditionalUserInfo(result);
+    
+    if (additionalInfo?.isNewUser) {
+        const firebaseUser = result.user;
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        await setDoc(userDocRef, {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            role: 'student' // Default role for new Google sign-ins
+        });
+    }
+    return result;
+  }
+
   const signOut = async () => {
     await firebaseSignOut(auth);
     router.push('/login');
@@ -79,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
   };
 
