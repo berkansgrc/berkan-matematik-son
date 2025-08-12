@@ -2,8 +2,8 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, collection, updateDoc, arrayUnion } from 'firebase/firestore';
-import { courseData as staticCourseData, grades, GradeSlug, Quiz } from './data';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { courseData as staticCourseData, grades, GradeSlug, Quiz, CourseData, Resource } from './data';
 import { revalidatePath } from 'next/cache';
 
 const COURSE_COLLECTION = 'courseData';
@@ -74,7 +74,7 @@ export async function saveQuizAndAddAsResource(
     await setDoc(quizDocRef, quiz);
 
     // 2. Create a new resource for the quiz
-    const quizResource = {
+    const quizResource: Resource = {
       id: quiz.id, // Use quiz ID as resource ID for consistency
       title: quiz.title,
       url: `/quiz/${quiz.id}`, // URL to the quiz page
@@ -100,28 +100,22 @@ export async function saveQuizAndAddAsResource(
         throw new Error(`Subject with ID ${subjectId} not found in ${gradeSlug}.`);
     }
 
-    // Use dot notation to update the specific array field
-    const fieldPath = `${gradeSlug}.subjects[${subjectIndex}].applications`;
-    
-    // Using updateDoc with arrayUnion is safer for concurrent updates
-    // But it's more complex with nested arrays of objects.
-    // A direct set with the updated data is simpler here.
-    const updatedSubjects = gradeData.subjects.map((subject, index) => {
-        if (index === subjectIndex) {
-            return {
-                ...subject,
-                applications: [...subject.applications, quizResource],
-            };
-        }
-        return subject;
-    });
+    // Clone the subjects array to modify it
+    const updatedSubjects = [...gradeData.subjects];
+    const subjectToUpdate = { ...updatedSubjects[subjectIndex] };
 
-    await setDoc(courseDocRef, {
-        ...courseData,
-        [gradeSlug]: {
-            ...gradeData,
-            subjects: updatedSubjects,
-        },
+    // Add the new resource to the applications array of the subject
+    subjectToUpdate.applications = [...subjectToUpdate.applications, quizResource];
+    
+    // Replace the old subject with the updated one
+    updatedSubjects[subjectIndex] = subjectToUpdate;
+    
+    // Create the field path for the update
+    const fieldPath = `${gradeSlug}.subjects`;
+
+    // Update only the subjects array for the specific grade
+    await updateDoc(courseDocRef, {
+        [fieldPath]: updatedSubjects
     });
     
     // Revalidate paths to reflect changes immediately
