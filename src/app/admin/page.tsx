@@ -1,6 +1,8 @@
 
 import { AdminClient } from './admin-client';
 import { getCourseData } from '@/lib/course-actions';
+import { QuizSimulatorClient } from './quiz-simulator-client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function AdminPage() {
   const initialCourseData = await getCourseData();
@@ -14,11 +16,22 @@ export default async function AdminPage() {
         </p>
       </header>
       
-       <div>
-           <h2 className="text-2xl font-bold mb-4">Ders İçerik Yönetimi</h2>
-           <p className="text-muted-foreground mb-6">Sınıflara göre ders kaynaklarını (video, döküman, uygulama) buradan yönetin.</p>
-           <AdminClient initialData={initialCourseData} />
-        </div>
+       <Tabs defaultValue="content-management">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="content-management">Ders İçerik Yönetimi</TabsTrigger>
+            <TabsTrigger value="quiz-simulator">Quiz Oluşturma Simülatörü</TabsTrigger>
+          </TabsList>
+          <TabsContent value="content-management" className="mt-6">
+             <h2 className="text-2xl font-bold mb-4">Ders İçerik Yönetimi</h2>
+             <p className="text-muted-foreground mb-6">Sınıflara göre ders kaynaklarını (video, döküman, uygulama) buradan yönetin.</p>
+             <AdminClient initialData={initialCourseData} />
+          </TabsContent>
+          <TabsContent value="quiz-simulator" className="mt-6">
+              <h2 className="text-2xl font-bold mb-4">AI Quiz Oluşturma Simülatörü</h2>
+              <p className="text-muted-foreground mb-6">Yapay zeka yardımıyla belirli bir konu için hızlıca çoktan seçmeli testler oluşturun. Oluşturulan testler, seçilen sınıf ve konunun "Uygulamalar" bölümüne otomatik olarak eklenir.</p>
+              <QuizSimulatorClient courseData={initialCourseData} />
+          </TabsContent>
+       </Tabs>
     </div>
   );
 }

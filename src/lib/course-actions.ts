@@ -2,11 +2,13 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { courseData as staticCourseData, grades, GradeSlug, GradeData, Subject } from './data';
+import { doc, getDoc, setDoc, collection, updateDoc, arrayUnion } from 'firebase/firestore';
+import { courseData as staticCourseData, grades, GradeSlug, Quiz } from './data';
+import { revalidatePath } from 'next/cache';
 
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
+const QUIZZES_COLLECTION = 'quizzes';
 
 // Helper to create an empty structure for all grades
 function getEmptyCourseData(): CourseData {
@@ -53,5 +55,99 @@ export async function getCourseData(): Promise<CourseData> {
         console.error("Error fetching course data:", error);
         // On permission errors, return empty data to allow the page to render.
         return getEmptyCourseData();
+    }
+}
+
+
+export async function saveQuizAndAddAsResource(
+  quiz: Quiz,
+  gradeSlug: GradeSlug,
+  subjectId: string,
+) {
+  if (!quiz || !gradeSlug || !subjectId) {
+    throw new Error('Eksik parametre: quiz, gradeSlug, and subjectId gereklidir.');
+  }
+
+  try {
+    // 1. Save the quiz to the 'quizzes' collection
+    const quizDocRef = doc(db, QUIZZES_COLLECTION, quiz.id);
+    await setDoc(quizDocRef, quiz);
+
+    // 2. Create a new resource for the quiz
+    const quizResource = {
+      id: quiz.id, // Use quiz ID as resource ID for consistency
+      title: quiz.title,
+      url: `/quiz/${quiz.id}`, // URL to the quiz page
+      createdAt: quiz.createdAt,
+    };
+
+    // 3. Add the new resource to the specific subject's applications array in the main course document
+    const courseDocRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+    const courseDocSnap = await getDoc(courseDocRef);
+
+    if (!courseDocSnap.exists()) {
+        throw new Error('Course data document not found.');
+    }
+
+    const courseData = courseDocSnap.data() as CourseData;
+    const gradeData = courseData[gradeSlug];
+    if (!gradeData) {
+        throw new Error(`Grade data for ${gradeSlug} not found.`);
+    }
+
+    const subjectIndex = gradeData.subjects.findIndex(s => s.id === subjectId);
+    if (subjectIndex === -1) {
+        throw new Error(`Subject with ID ${subjectId} not found in ${gradeSlug}.`);
+    }
+
+    // Use dot notation to update the specific array field
+    const fieldPath = `${gradeSlug}.subjects[${subjectIndex}].applications`;
+    
+    // Using updateDoc with arrayUnion is safer for concurrent updates
+    // But it's more complex with nested arrays of objects.
+    // A direct set with the updated data is simpler here.
+    const updatedSubjects = gradeData.subjects.map((subject, index) => {
+        if (index === subjectIndex) {
+            return {
+                ...subject,
+                applications: [...subject.applications, quizResource],
+            };
+        }
+        return subject;
+    });
+
+    await setDoc(courseDocRef, {
+        ...courseData,
+        [gradeSlug]: {
+            ...gradeData,
+            subjects: updatedSubjects,
+        },
+    });
+    
+    // Revalidate paths to reflect changes immediately
+    revalidatePath('/admin');
+    revalidatePath(`/${gradeSlug}`);
+
+    return { success: true, quizId: quiz.id };
+  } catch (error) {
+    console.error('Error saving quiz and adding resource:', error);
+    throw new Error('Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu.');
+  }
+}
+
+export async function getQuizData(quizId: string): Promise<Quiz | null> {
+    try {
+        const docRef = doc(db, QUIZZES_COLLECTION, quizId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            return docSnap.data() as Quiz;
+        } else {
+            console.log(`No quiz found with ID: ${quizId}`);
+            return null;
+        }
+    } catch(error) {
+        console.error("Error fetching quiz data:", error);
+        return null;
     }
 }
