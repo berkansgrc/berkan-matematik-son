@@ -35,12 +35,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // This is to allow cross-origin requests in the development environment,
-  // which is necessary for cloud-based IDEs like Firebase Studio.
-  // The `allowedDevOrigins` property was moved out of `experimental` in newer Next.js versions.
-  allowedDevOrigins: [
-    'https://*.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev',
-  ],
 };
 
 export default nextConfig;
