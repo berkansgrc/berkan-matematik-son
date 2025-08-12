@@ -65,12 +65,16 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
     }
     setIsSaving(true);
     try {
-        const subjectTitle = subjectsForSelectedGrade.find(s => s.id === selectedSubject)?.title || '';
+        const subjectData = subjectsForSelectedGrade.find(s => s.id === selectedSubject);
+        if (!subjectData) {
+            throw new Error("Seçilen ders konusu bulunamadı.");
+        }
+
         const quizToSave: Quiz = {
             id: uuidv4(),
-            title: `${subjectTitle}: ${topic} Testi`,
+            title: `${topic} Testi`,
             grade: courseData[selectedGrade].name,
-            subject: subjectTitle,
+            subject: subjectData.title,
             questions: generatedQuiz.questions.map(q => ({...q, id: uuidv4()})),
             createdAt: new Date().toISOString(),
         };
@@ -80,17 +84,19 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
         if (result.success) {
             toast({
                 title: "Başarılı!",
-                description: `Test başarıyla kaydedildi ve ilgili konunun uygulamalar bölümüne eklendi.`,
+                description: `Test başarıyla kaydedildi ve "${subjectData.title}" konusunun uygulamalar bölümüne eklendi.`,
             });
             // Reset state
             setGeneratedQuiz(null);
             setTopic('');
             setPrompt('');
-            setSelectedGrade('');
-            setSelectedSubject('');
+            // We keep the grade and subject selected to make it easier to add more quizzes
+        } else {
+             throw new Error('Sunucudan beklenmedik bir yanıt geldi.');
         }
     } catch (err: any) {
-        toast({ title: "Kaydetme Hatası", description: err.message, variant: "destructive"});
+        console.error("Quiz save error:", err);
+        toast({ title: "Kaydetme Hatası", description: err.message || "Bilinmeyen bir hata oluştu.", variant: "destructive"});
     } finally {
         setIsSaving(false);
     }
@@ -105,7 +111,7 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
       <CardContent className="grid gap-6">
         <div className="grid md:grid-cols-3 gap-4">
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="topic">Konu Başlığı</Label>
+            <Label htmlFor="topic">Konu Başlığı (Test Adı)</Label>
             <Input 
                 id="topic" 
                 placeholder="Örn: Kesirlerle Toplama İşlemi" 

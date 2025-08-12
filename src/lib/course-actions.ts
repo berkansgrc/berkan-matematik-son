@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { courseData as staticCourseData, grades, GradeSlug, Quiz, CourseData, Resource } from './data';
 import { revalidatePath } from 'next/cache';
 
@@ -69,63 +69,55 @@ export async function saveQuizAndAddAsResource(
   }
 
   try {
-    // 1. Save the quiz to the 'quizzes' collection
+    // 1. Save the quiz to its own collection for easy retrieval
     const quizDocRef = doc(db, QUIZZES_COLLECTION, quiz.id);
     await setDoc(quizDocRef, quiz);
 
-    // 2. Create a new resource for the quiz
+    // 2. Create the resource object to be added to the course data
     const quizResource: Resource = {
-      id: quiz.id, // Use quiz ID as resource ID for consistency
+      id: quiz.id, // Use quiz ID for consistency
       title: quiz.title,
-      url: `/quiz/${quiz.id}`, // URL to the quiz page
+      url: `/quiz/${quiz.id}`,
       createdAt: quiz.createdAt,
     };
 
-    // 3. Add the new resource to the specific subject's applications array in the main course document
+    // 3. Update the main course document using the read-modify-write pattern
     const courseDocRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
     const courseDocSnap = await getDoc(courseDocRef);
 
     if (!courseDocSnap.exists()) {
-        throw new Error('Course data document not found.');
+        throw new Error('Ana ders dökümanı bulunamadı.');
     }
 
     const courseData = courseDocSnap.data() as CourseData;
-    const gradeData = courseData[gradeSlug];
-    if (!gradeData) {
-        throw new Error(`Grade data for ${gradeSlug} not found.`);
-    }
 
-    const subjectIndex = gradeData.subjects.findIndex(s => s.id === subjectId);
+    // Deep copy the subjects for the specific grade to avoid mutation issues
+    const updatedSubjects = JSON.parse(JSON.stringify(courseData[gradeSlug].subjects));
+    
+    const subjectIndex = updatedSubjects.findIndex((s: Subject) => s.id === subjectId);
+    
     if (subjectIndex === -1) {
-        throw new Error(`Subject with ID ${subjectId} not found in ${gradeSlug}.`);
+      throw new Error(`Ders konusu (ID: ${subjectId}) ${gradeSlug} sınıfında bulunamadı.`);
     }
 
-    // Clone the subjects array to modify it
-    const updatedSubjects = [...gradeData.subjects];
-    const subjectToUpdate = { ...updatedSubjects[subjectIndex] };
-
-    // Add the new resource to the applications array of the subject
-    subjectToUpdate.applications = [...subjectToUpdate.applications, quizResource];
+    // Add the new quiz resource to the applications array of the found subject
+    updatedSubjects[subjectIndex].applications.push(quizResource);
     
-    // Replace the old subject with the updated one
-    updatedSubjects[subjectIndex] = subjectToUpdate;
-    
-    // Create the field path for the update
+    // 4. Write the modified subjects array back to Firestore
     const fieldPath = `${gradeSlug}.subjects`;
-
-    // Update only the subjects array for the specific grade
     await updateDoc(courseDocRef, {
-        [fieldPath]: updatedSubjects
+      [fieldPath]: updatedSubjects
     });
     
-    // Revalidate paths to reflect changes immediately
+    // 5. Revalidate paths to show changes immediately
     revalidatePath('/admin');
     revalidatePath(`/${gradeSlug}`);
 
     return { success: true, quizId: quiz.id };
-  } catch (error) {
-    console.error('Error saving quiz and adding resource:', error);
-    throw new Error('Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu.');
+  } catch (error: any) {
+    console.error('Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu:', error);
+    // Throw a more specific error to the client
+    throw new Error(`Quiz kaydedilirken veya kaynak olarak eklenirken bir hata oluştu: ${error.message}`);
   }
 }
 
