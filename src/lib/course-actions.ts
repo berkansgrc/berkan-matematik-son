@@ -2,12 +2,11 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { courseData as staticCourseData, grades, Quiz, CourseData } from './data';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { courseData as staticCourseData, grades, CourseData } from './data';
 
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
-const QUIZZES_COLLECTION = 'quizzes';
 
 // Helper to create an empty structure for all grades
 function getEmptyCourseData(): CourseData {
@@ -53,22 +52,5 @@ export async function getCourseData(): Promise<CourseData> {
     } catch(error) {
         console.error("Error fetching course data:", error);
         return getEmptyCourseData();
-    }
-}
-
-export async function getQuizData(quizId: string): Promise<Quiz | null> {
-    try {
-        const docRef = doc(db, QUIZZES_COLLECTION, quizId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            return docSnap.data() as Quiz;
-        } else {
-            console.log(`No quiz found with ID: ${quizId}`);
-            return null;
-        }
-    } catch(error) {
-        console.error("Error fetching quiz data:", error);
-        return null;
     }
 }
