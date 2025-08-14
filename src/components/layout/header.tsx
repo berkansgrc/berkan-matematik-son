@@ -3,6 +3,7 @@
 
 import { Home, LogOut, Shield, ChevronDown, Calculator } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,32 +18,12 @@ import {
 import { grades } from "@/lib/data";
 
 const Logo = () => (
-    <div className="flex items-center gap-3 text-primary" style={{ height: '40px' }}>
-      <svg
-        viewBox="0 0 165 40"
-        height="40"
-        xmlns="http://www.w3.org/2000/svg"
-        className="fill-current text-primary"
-      >
-        <g>
-          {/* Calculator Icon Box */}
-          <rect x="0.5" y="0.5" width="39" height="39" rx="6" ry="6" className="stroke-current" fillOpacity="0" strokeWidth="1" />
-          {/* Lines */}
-          <line x1="20" y1="0" x2="20" y2="40" className="stroke-current" strokeWidth="1" />
-          <line x1="0" y1="20" x2="40" y2="20" className="stroke-current" strokeWidth="1" />
-          
-          {/* Symbols */}
-          <text x="10" y="13" textAnchor="middle" alignmentBaseline="middle" fontSize="16" fontWeight="normal" className="fill-current">+</text>
-          <text x="30" y="13" textAnchor="middle" alignmentBaseline="middle" fontSize="20" fontWeight="normal" className="fill-current">-</text>
-          <text x="10" y="31" textAnchor="middle" alignmentBaseline="middle" fontSize="16" fontWeight="normal" className="fill-current">×</text>
-          <text x="30" y="31" textAnchor="middle" alignmentBaseline="middle" fontSize="20" fontWeight="normal" className="fill-current">÷</text>
-        </g>
-        <g>
-           {/* Text */}
-          <text x="50" y="16" fontSize="19" fontWeight="bold" className="fill-current">Berkan</text>
-          <text x="50" y="36" fontSize="19" fontWeight="bold" className="fill-current">Matematik</text>
-        </g>
-      </svg>
+    <div className="flex items-center gap-2" style={{ height: '40px' }}>
+      <Image src="/logo.png" alt="Berkan Matematik Logo" width={40} height={40} className="rounded-md" />
+       <div className="flex flex-col justify-center">
+            <span className="font-bold text-base leading-tight">Berkan</span>
+            <span className="font-bold text-base leading-tight">Matematik</span>
+       </div>
     </div>
 );
 
