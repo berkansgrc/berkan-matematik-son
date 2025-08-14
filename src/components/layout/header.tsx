@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Home, LogOut, Shield, ChevronDown, Calculator } from "lucide-react";
+import { Home, LogOut, Shield, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,13 @@ import {
 import { grades } from "@/lib/data";
 
 const Logo = () => (
-    <div className="flex items-center gap-2" style={{ height: '40px' }}>
-      <Image src="/logo.png" alt="Berkan Matematik Logo" width={40} height={40} className="rounded-md" />
-       <div className="flex flex-col justify-center">
-            <span className="font-bold text-base leading-tight">Berkan</span>
-            <span className="font-bold text-base leading-tight">Matematik</span>
-       </div>
-    </div>
+  <Image 
+    src="/logo.png" 
+    alt="Berkan Matematik Logo" 
+    width={40} 
+    height={40} 
+    className="rounded-md" 
+  />
 );
 
 
