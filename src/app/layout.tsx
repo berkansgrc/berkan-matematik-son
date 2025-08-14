@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -10,9 +11,6 @@ import { AuthProvider } from '@/hooks/use-auth';
 export const metadata: Metadata = {
   title: 'Berkan Matematik',
   description: 'Matematikte başarının adresi',
-  icons: {
-    icon: '/logo.png',
-  },
 };
 
 export default function RootLayout({

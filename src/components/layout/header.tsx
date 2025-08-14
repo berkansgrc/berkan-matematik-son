@@ -1,12 +1,11 @@
 
 "use client";
 
-import { Home, LogOut, Shield, ChevronDown } from "lucide-react";
+import { Home, LogOut, Shield, ChevronDown, Calculator } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { grades } from "@/lib/data";
 
+const Logo = () => (
+  <div className="flex items-center gap-2 text-primary">
+    <Calculator className="h-8 w-8" />
+    <div className="flex flex-col">
+      <span className="font-bold text-lg leading-tight">Berkan</span>
+      <span className="text-sm leading-tight">Matematik</span>
+    </div>
+  </div>
+);
+
+
 export function Header() {
   const { user, signOut } = useAuth();
 
@@ -24,7 +34,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/logo.png" alt="Berkan Matematik Sitesi Logosu" width={140} height={40} />
+            <Logo />
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
