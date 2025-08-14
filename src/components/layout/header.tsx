@@ -24,7 +24,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/logo.png" alt="Berkan Matematik Logo" width={140} height={40} />
+            <Image src="/logo.png" alt="Berkan Matematik Sitesi Logosu" width={140} height={40} />
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
