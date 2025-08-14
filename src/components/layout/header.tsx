@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Home, LogOut, Shield, ChevronDown } from "lucide-react";
+import { Home, LogOut, Shield, ChevronDown, Calculator } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,9 +23,15 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group">
-           <span className="text-xl font-bold transition-colors group-hover:text-primary">
-            Berkan Matematik
-           </span>
+            <Calculator className="h-8 w-8 text-primary transition-transform group-hover:rotate-12" />
+            <div className="flex flex-col">
+                <span className="text-lg font-bold leading-tight transition-colors group-hover:text-primary">
+                    Berkan
+                </span>
+                <span className="text-lg font-bold leading-tight transition-colors group-hover:text-primary">
+                    Matematik
+                </span>
+            </div>
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">
