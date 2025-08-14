@@ -23,12 +23,9 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group">
-           <img
-              src="/logo.png"
-              alt="Berkan Matematik Logo"
-              style={{ height: '160px', width: 'auto' }}
-              className="transition-transform duration-300 group-hover:scale-105"
-            />
+           <span className="text-xl font-bold transition-colors group-hover:text-primary">
+            Berkan Matematik
+           </span>
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex transition-all hover:bg-accent/80 hover:scale-110">

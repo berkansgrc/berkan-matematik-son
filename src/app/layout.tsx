@@ -10,9 +10,6 @@ import { AuthProvider } from '@/hooks/use-auth';
 export const metadata: Metadata = {
   title: 'Berkan Matematik',
   description: 'Matematikte başarının adresi',
-  icons: {
-    icon: '/logo.png',
-  },
 };
 
 export default function RootLayout({
@@ -30,7 +27,6 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/logo.png" sizes="any" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
