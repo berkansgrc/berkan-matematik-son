@@ -21,8 +21,8 @@ const Logo = () => (
   <Image 
     src="/logo.png" 
     alt="Berkan Matematik Logo" 
-    width={40} 
-    height={40} 
+    width={120} 
+    height={120} 
     className="rounded-md" 
   />
 );
