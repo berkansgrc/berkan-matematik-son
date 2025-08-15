@@ -8,7 +8,7 @@ import { grades } from '@/lib/data';
 import { getCourseData } from '@/lib/course-actions';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, collection, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -98,11 +98,11 @@ export function AdminClient({ initialData }: AdminClientProps) {
     try {
         const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
         const docSnap = await getDoc(docRef);
-        const currentData = docSnap.exists() ? docSnap.data() as CourseData : getEmptyCourseData();
+        const currentData = docSnap.exists() ? docSnap.data() as CourseData : initialData;
 
         if (!grade) throw new Error("Sınıf seçimi yapılmadı.");
 
-        let gradeData = JSON.parse(JSON.stringify(currentData[grade] ?? getEmptyCourseData()[grade]));
+        let gradeData = JSON.parse(JSON.stringify(currentData[grade] ?? initialData[grade]));
         
         switch(mode) {
             case 'addSubject':
@@ -122,6 +122,8 @@ export function AdminClient({ initialData }: AdminClientProps) {
                 const newResource: Resource = { id: doc(collection(db, '_')).id, title: currentTitle, url: currentUrl, createdAt: new Date().toISOString() };
                 gradeData.subjects = gradeData.subjects.map((s: Subject) => {
                     if (s.id === subject.id) {
+                        // Ensure category array exists
+                        if (!s[category]) s[category] = [];
                         return { ...s, [category]: [...s[category], newResource] };
                     }
                     return s;
@@ -142,7 +144,8 @@ export function AdminClient({ initialData }: AdminClientProps) {
                 break;
         }
 
-        await updateDoc(docRef, { [grade]: gradeData });
+        // Use a batch to ensure atomicity, or simply update the specific field path
+        await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
         
         handleCloseDialog();
         await refreshData();
@@ -165,6 +168,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
       const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) throw new Error("Veritabanı dökümanı bulunamadı.");
+      
       const currentData = docSnap.data() as CourseData;
       let gradeData = JSON.parse(JSON.stringify(currentData[grade]));
       
@@ -185,7 +189,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
         toast({ title: "Başarılı", description: "Konu ve içindeki tüm kaynaklar silindi." });
       }
 
-      await updateDoc(docRef, { [grade]: gradeData });
+      await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
       await refreshData();
 
     } catch (error: any) {
@@ -309,7 +313,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={handleCloseDialog}>İptal</Button>
-            <Button onClick={handleSave} disabled={isSubmitting}>
+            <Button onClick={handleSave} disabled={isSubmitting || !currentTitle}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Kaydet
             </Button>
@@ -330,7 +334,7 @@ function ResourceColumn({ title, icon, category, resources, onAdd, onEdit, onDel
                 </div>
             </CardHeader>
             <CardContent>
-                {resources.length > 0 ? (
+                {resources?.length > 0 ? (
                     <ul className="space-y-2">
                       {resources.slice().sort((a,b) => (a.createdAt && b.createdAt) ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0).map(resource => (
                         <li key={resource.id} className="flex items-center justify-between bg-background p-2 rounded-md border">
@@ -352,14 +356,4 @@ function ResourceColumn({ title, icon, category, resources, onAdd, onEdit, onDel
     )
 }
 
-function getEmptyCourseData(): CourseData {
-    const emptyData: any = {};
-    grades.forEach(g => {
-        emptyData[g.slug] = {
-            name: g.name,
-            description: g.description,
-            subjects: [],
-        };
-    });
-    return emptyData as CourseData;
-}
+    
