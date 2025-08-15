@@ -34,7 +34,6 @@ type DialogState = {
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
 
-// This is a client component that fetches its own data.
 export function AdminClient() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -47,13 +46,6 @@ export function AdminClient() {
   const [currentUrl, setCurrentUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<GradeSlug>(grades[0].slug);
-
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) router.push('/login');
-      else if (user.role !== 'admin') router.push('/');
-    }
-  }, [user, authLoading, router]);
 
   const fetchData = useCallback(async () => {
     setIsDataLoading(true);
@@ -90,76 +82,81 @@ export function AdminClient() {
   }
 
   const handleSave = async () => {
-    if (user?.role !== 'admin' || !data) {
+    if (user?.role !== 'admin' || !dialogState.grade) {
       toast({ title: "Hata", description: "Bu işlem için yetkiniz yok veya veri yüklenmemiş.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     
     const { mode, grade, subject, resource, category } = dialogState;
-    if (!grade) {
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Create a deep copy to avoid direct state mutation before DB operation
-    let updatedData = JSON.parse(JSON.stringify(data));
-    let gradeData = updatedData[grade];
 
     try {
       const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-        
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error("Course data document not found.");
+
+      const fullData = docSnap.data() as CourseData;
+      let updatedSubjects = [...fullData[grade].subjects]; // Create a mutable copy of subjects for the specific grade
+
       switch(mode) {
           case 'addSubject': {
               const newSubject: Subject = { id: doc(collection(db, '_')).id, title: currentTitle, videos: [], documents: [], applications: [] };
-              gradeData.subjects.push(newSubject);
+              updatedSubjects.push(newSubject);
               toast({ title: "Başarılı", description: "Yeni konu eklendi." });
               break;
           }
           case 'editSubject': {
               if (!subject) throw new Error("Konu bulunamadı.");
-              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
-              if (subjectIndex > -1) {
-                  gradeData.subjects[subjectIndex].title = currentTitle;
-              }
+              updatedSubjects = updatedSubjects.map(s => s.id === subject.id ? { ...s, title: currentTitle } : s);
               toast({ title: "Başarılı", description: "Konu güncellendi." });
               break;
           }
           case 'addResource': {
               if (!subject || !category) throw new Error("Konu veya kategori bulunamadı.");
               const newResource: Resource = { id: doc(collection(db, '_')).id, title: currentTitle, url: currentUrl, createdAt: new Date().toISOString() };
-              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
-              if (subjectIndex > -1) {
-                  if (!gradeData.subjects[subjectIndex][category]) gradeData.subjects[subjectIndex][category] = [];
-                  gradeData.subjects[subjectIndex][category].push(newResource);
-              }
+              updatedSubjects = updatedSubjects.map(s => {
+                  if (s.id === subject.id) {
+                      const newCategoryList = [...(s[category] || []), newResource];
+                      return { ...s, [category]: newCategoryList };
+                  }
+                  return s;
+              });
               toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
               break;
           }
           case 'editResource': {
               if (!subject || !category || !resource) throw new Error("Konu, kategori veya kaynak bulunamadı.");
-              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
-              if (subjectIndex > -1) {
-                  const resourceIndex = gradeData.subjects[subjectIndex][category].findIndex((r: Resource) => r.id === resource.id);
-                  if (resourceIndex > -1) {
-                      gradeData.subjects[subjectIndex][category][resourceIndex] = { ...resource, title: currentTitle, url: currentUrl };
+              updatedSubjects = updatedSubjects.map(s => {
+                  if (s.id === subject.id) {
+                      const newCategoryList = s[category].map(r => r.id === resource.id ? { ...resource, title: currentTitle, url: currentUrl } : r);
+                      return { ...s, [category]: newCategoryList };
                   }
-              }
+                  return s;
+              });
               toast({ title: "Başarılı", description: "Kaynak güncellendi." });
               break;
           }
       }
 
-      await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
+      await updateDoc(docRef, { [`${grade}.subjects`]: updatedSubjects });
       
-      // Update state directly instead of refetching
-      setData(updatedData);
+      setData(prevData => {
+          if (!prevData) return null;
+          return {
+              ...prevData,
+              [grade]: {
+                  ...prevData[grade],
+                  subjects: updatedSubjects
+              }
+          };
+      });
+
       handleCloseDialog();
 
     } catch (error: any) {
         console.error("Failed to save:", error);
         toast({ title: "Hata", description: error.message || "İşlem sırasında bir hata oluştu.", variant: "destructive" });
-        setIsSubmitting(false); // Only set to false on error
+        setIsSubmitting(false);
     }
   }
 
@@ -170,38 +167,52 @@ export function AdminClient() {
         return;
     }
     
-    // Create a deep copy to avoid direct state mutation before DB operation
-    let updatedData = JSON.parse(JSON.stringify(data));
-    let gradeData = updatedData[grade];
-
     try {
-      const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-      
-      if (resourceToDelete && subjectToDelete && category) { // Delete a resource
-        const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subjectToDelete.id);
-        if (subjectIndex > -1) {
-            gradeData.subjects[subjectIndex][category] = gradeData.subjects[subjectIndex][category].filter((r: Resource) => r.id !== resourceToDelete.id);
-        }
-        toast({ title: "Başarılı", description: "Kaynak silindi." });
-      } else if (subjectToDelete) { // Delete a subject
-         if (subjectToDelete.videos.length > 0 || subjectToDelete.documents.length > 0 || subjectToDelete.applications.length > 0) {
-            if (!confirm("Bu konunun içinde kaynaklar var. Konuyu silerseniz içindeki tüm kaynaklar da silinir. Emin misiniz?")) return;
-        }
-        gradeData.subjects = gradeData.subjects.filter((s: Subject) => s.id !== subjectToDelete.id);
-        toast({ title: "Başarılı", description: "Konu ve içindeki tüm kaynaklar silindi." });
-      }
+        const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) throw new Error("Course data document not found.");
 
-      await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
-      // Update state directly instead of refetching
-      setData(updatedData);
+        const fullData = docSnap.data() as CourseData;
+        let updatedSubjects = [...fullData[grade].subjects];
+
+        if (resourceToDelete && subjectToDelete && category) { // Delete a resource
+            updatedSubjects = updatedSubjects.map(s => {
+                if (s.id === subjectToDelete.id) {
+                    const newCategoryList = s[category].filter(r => r.id !== resourceToDelete.id);
+                    return { ...s, [category]: newCategoryList };
+                }
+                return s;
+            });
+            toast({ title: "Başarılı", description: "Kaynak silindi." });
+        } else if (subjectToDelete) { // Delete a subject
+            if (subjectToDelete.videos.length > 0 || subjectToDelete.documents.length > 0 || subjectToDelete.applications.length > 0) {
+                if (!confirm("Bu konunun içinde kaynaklar var. Konuyu silerseniz içindeki tüm kaynaklar da silinir. Emin misiniz?")) return;
+            }
+            updatedSubjects = updatedSubjects.filter((s: Subject) => s.id !== subjectToDelete.id);
+            toast({ title: "Başarılı", description: "Konu ve içindeki tüm kaynaklar silindi." });
+        }
+
+        await updateDoc(docRef, { [`${grade}.subjects`]: updatedSubjects });
+
+        setData(prevData => {
+            if (!prevData) return null;
+            return {
+                ...prevData,
+                [grade]: {
+                    ...prevData[grade],
+                    subjects: updatedSubjects
+                }
+            };
+        });
 
     } catch (error: any) {
-      console.error("Failed to delete:", error);
-      toast({ title: "Hata", description: "Silme işlemi sırasında hata.", variant: "destructive" });
+        console.error("Failed to delete:", error);
+        toast({ title: "Hata", description: "Silme işlemi sırasında hata.", variant: "destructive" });
     }
   }
 
-  if (authLoading || !user || user.role !== 'admin' || !data) {
+
+  if (authLoading || !user || user.role !== 'admin' || isDataLoading) {
       return (
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 flex justify-center items-center h-screen">
               <Loader2 className="mr-2 h-8 w-8 animate-spin" />
@@ -227,24 +238,26 @@ export function AdminClient() {
         {grades.map(grade => (
             <TabsContent key={grade.slug} value={grade.slug} className="mt-6">
                  {isDataLoading ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : 
-                    data[grade.slug]?.subjects.length > 0 ? (
+                    data?.[grade.slug]?.subjects.length > 0 ? (
                     <Accordion type="single" collapsible className="w-full space-y-4">
                         {data[grade.slug].subjects.map(subject => (
                             <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg overflow-hidden">
-                                <AccordionTrigger className="bg-card hover:no-underline p-4 text-lg font-semibold flex justify-between w-full items-center">
-                                    <div className="flex items-center gap-3">
-                                        <BookOpen className="h-6 w-6 text-primary" />
-                                        <span>{subject.title}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 pr-4">
-                                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDialog('editSubject', grade.slug, subject); }}>
-                                            <Edit className="h-4 w-4 mr-2"/> Düzenle
-                                        </Button>
-                                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(grade.slug, subject); }}>
-                                            <Trash2 className="h-4 w-4 mr-2"/> Sil
-                                        </Button>
-                                    </div>
-                                </AccordionTrigger>
+                                <div className="flex items-center bg-card p-4">
+                                  <AccordionTrigger className="hover:no-underline text-lg font-semibold flex-1">
+                                      <div className="flex items-center gap-3">
+                                          <BookOpen className="h-6 w-6 text-primary" />
+                                          <span>{subject.title}</span>
+                                      </div>
+                                  </AccordionTrigger>
+                                  <div className="flex items-center gap-2 pl-4">
+                                      <Button variant="ghost" size="sm" onClick={() => handleOpenDialog('editSubject', grade.slug, subject)}>
+                                          <Edit className="h-4 w-4 mr-2"/> Düzenle
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(grade.slug, subject)}>
+                                          <Trash2 className="h-4 w-4 mr-2"/> Sil
+                                      </Button>
+                                  </div>
+                                </div>
                                 <AccordionContent className="bg-muted/50 p-4 md:p-6">
                                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <ResourceColumn 
@@ -358,5 +371,7 @@ function ResourceColumn({ title, icon, category, resources, onAdd, onEdit, onDel
         </Card>
     )
 }
+
+    
 
     
