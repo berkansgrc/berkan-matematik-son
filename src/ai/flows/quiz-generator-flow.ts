@@ -1,71 +1,84 @@
-{
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+
+'use server';
+/**
+ * @fileOverview A quiz generation AI agent.
+ *
+ * - generateQuiz - A function that handles the quiz generation process.
+ * - QuizInput - The input type for the generateQuiz function.
+ * - Quiz - The return type for the generateQuiz function.
+ */
+
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit/zod';
+
+// Define Zod schemas for structured input and output
+
+const QuizInputSchema = z.object({
+  topic: z.string().describe('The specific topic for the quiz (e.g., "Fractions", "Algebraic Expressions").'),
+  grade: z.string().describe('The grade level for the quiz (e.g., "5. Sınıf", "LGS Hazırlık").'),
+  prompt: z.string().optional().describe('Optional additional instructions for the AI (e.g., "Make questions more focused on problem-solving.").'),
+});
+
+const QuestionSchema = z.object({
+  questionText: z.string().describe('The text of the quiz question.'),
+  options: z.array(z.string()).length(4).describe('An array of four possible answers.'),
+  correctAnswer: z.enum(['A', 'B', 'C', 'D']).describe('The letter corresponding to the correct answer.'),
+});
+
+const QuizOutputSchema = z.object({
+  questions: z.array(QuestionSchema).length(5).describe('An array of 5 quiz questions.'),
+});
+
+
+// Export types for use in the application
+export type QuizInput = z.infer<typeof QuizInputSchema>;
+export type Quiz = z.infer<typeof QuizOutputSchema>;
+
+// Define the Genkit prompt
+const quizPrompt = ai.definePrompt({
+  name: 'quizPrompt',
+  input: { schema: QuizInputSchema },
+  output: { schema: QuizOutputSchema },
+  prompt: `
+    You are an expert mathematics teacher in Turkey. Generate a 5-question multiple-choice quiz.
+
+    Instructions:
+    1.  The quiz must be in TURKISH.
+    2.  The topic of the quiz is: {{{topic}}}.
+    3.  The target grade level is: {{{grade}}}.
+    4.  Create 5 multiple-choice questions.
+    5.  Each question must have 4 options (A, B, C, D).
+    6.  The questions should be appropriate for the specified grade level's curriculum in Turkey.
+    7.  Ensure there is only one correct answer for each question.
+    8.  Vary the question types (e.g., calculations, word problems, definitions).
+    {{#if prompt}}
+    9.  Follow these additional instructions: {{{prompt}}}
+    {{/if}}
+
+    Return the output in the specified JSON format. Do not include any extra text or explanations.
+    `,
+});
+
+
+// Define the Genkit flow
+const quizFlow = ai.defineFlow(
+  {
+    name: 'quizFlow',
+    inputSchema: QuizInputSchema,
+    outputSchema: QuizOutputSchema,
   },
-  "dependencies": {
-    "@genkit-ai/googleai": "^1.14.1",
-    "@genkit-ai/next": "^1.14.1",
-    "@hookform/resolvers": "^4.1.3",
-    "@radix-ui/react-accordion": "^1.2.3",
-    "@radix-ui/react-alert-dialog": "^1.1.6",
-    "@radix-ui/react-avatar": "^1.1.3",
-    "@radix-ui/react-checkbox": "^1.1.4",
-    "@radix-ui/react-collapsible": "^1.1.11",
-    "@radix-ui/react-dialog": "^1.1.6",
-    "@radix-ui/react-dropdown-menu": "^2.1.6",
-    "@radix-ui/react-label": "^2.1.2",
-    "@radix-ui/react-menubar": "^1.1.6",
-    "@radix-ui/react-popover": "^1.1.6",
-    "@radix-ui/react-progress": "^1.1.2",
-    "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
-    "@radix-ui/react-select": "^2.1.6",
-    "@radix-ui/react-separator": "^1.1.2",
-    "@radix-ui/react-slider": "^1.2.3",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@radix-ui/react-switch": "^1.1.3",
-    "@radix-ui/react-tabs": "^1.1.3",
-    "@radix-ui/react-toast": "^1.2.6",
-    "@radix-ui/react-tooltip": "^1.1.8",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "dotenv": "^16.5.0",
-    "embla-carousel-react": "^8.6.0",
-    "firebase": "^11.9.1",
-    "genkit": "^1.14.1",
-    "lucide-react": "^0.417.0",
-    "lottie-react": "^2.4.0",
-    "lottie-web": "^5.12.2",
-    "next": "15.3.3",
-    "patch-package": "^8.0.0",
-    "react": "^18.3.1",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
-    "react-dom-confetti": "^0.2.0",
-    "react-hook-form": "^7.54.2",
-    "react-type-animation": "^3.2.0",
-    "recharts": "^2.15.1",
-    "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "genkit-cli": "^1.14.1",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+  async (input) => {
+    const { output } = await quizPrompt(input);
+    if (!output) {
+      throw new Error('AI failed to generate a quiz. Please try again.');
+    }
+    return output;
   }
+);
+
+
+// Export a wrapper function to be called from the server-side
+export async function generateQuiz(input: QuizInput): Promise<Quiz> {
+  return await quizFlow(input);
 }
+

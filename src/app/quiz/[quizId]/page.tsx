@@ -1,71 +1,50 @@
-{
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@genkit-ai/googleai": "^1.14.1",
-    "@genkit-ai/next": "^1.14.1",
-    "@hookform/resolvers": "^4.1.3",
-    "@radix-ui/react-accordion": "^1.2.3",
-    "@radix-ui/react-alert-dialog": "^1.1.6",
-    "@radix-ui/react-avatar": "^1.1.3",
-    "@radix-ui/react-checkbox": "^1.1.4",
-    "@radix-ui/react-collapsible": "^1.1.11",
-    "@radix-ui/react-dialog": "^1.1.6",
-    "@radix-ui/react-dropdown-menu": "^2.1.6",
-    "@radix-ui/react-label": "^2.1.2",
-    "@radix-ui/react-menubar": "^1.1.6",
-    "@radix-ui/react-popover": "^1.1.6",
-    "@radix-ui/react-progress": "^1.1.2",
-    "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
-    "@radix-ui/react-select": "^2.1.6",
-    "@radix-ui/react-separator": "^1.1.2",
-    "@radix-ui/react-slider": "^1.2.3",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@radix-ui/react-switch": "^1.1.3",
-    "@radix-ui/react-tabs": "^1.1.3",
-    "@radix-ui/react-toast": "^1.2.6",
-    "@radix-ui/react-tooltip": "^1.1.8",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "dotenv": "^16.5.0",
-    "embla-carousel-react": "^8.6.0",
-    "firebase": "^11.9.1",
-    "genkit": "^1.14.1",
-    "lucide-react": "^0.417.0",
-    "lottie-react": "^2.4.0",
-    "lottie-web": "^5.12.2",
-    "next": "15.3.3",
-    "patch-package": "^8.0.0",
-    "react": "^18.3.1",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
-    "react-dom-confetti": "^0.2.0",
-    "react-hook-form": "^7.54.2",
-    "react-type-animation": "^3.2.0",
-    "recharts": "^2.15.1",
-    "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "genkit-cli": "^1.14.1",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+
+import { doc, getDoc } from 'firebase/firestore';
+import { notFound } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import type { Quiz } from '@/lib/data';
+import { QuizClient } from './quiz-client';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
+const QUIZZES_COLLECTION = 'quizzes';
+
+async function getQuizData(quizId: string): Promise<Quiz | null> {
+  try {
+    const quizDocRef = doc(db, QUIZZES_COLLECTION, quizId);
+    const quizDocSnap = await getDoc(quizDocRef);
+
+    if (quizDocSnap.exists()) {
+      return quizDocSnap.data() as Quiz;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching quiz data:", error);
+    return null;
   }
+}
+
+export default async function QuizPage({ params }: { params: { quizId: string } }) {
+  const quizData = await getQuizData(params.quizId);
+
+  if (!quizData) {
+    notFound();
+  }
+
+  return (
+     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <header className="mb-8">
+            <Button variant="ghost" asChild className="mb-4 -ml-4">
+              <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Ana Sayfa
+              </Link>
+            </Button>
+            <h1 className="text-4xl font-extrabold tracking-tight text-primary">{quizData.title}</h1>
+            <p className="mt-2 text-lg text-muted-foreground">{quizData.grade} / {quizData.subject}</p>
+        </header>
+        <QuizClient quiz={quizData} />
+    </div>
+  );
 }

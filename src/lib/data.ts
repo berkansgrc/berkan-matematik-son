@@ -1,5 +1,4 @@
 
-
 export interface Resource {
   id: string;
   title: string;
@@ -15,6 +14,22 @@ export interface Subject {
   videos: Resource[];
   documents: Resource[];
   applications: Resource[];
+}
+
+export interface Question {
+    id: string;
+    questionText: string;
+    options: string[];
+    correctAnswer: string; // "A", "B", "C", or "D"
+}
+
+export interface Quiz {
+    id: string;
+    title: string;
+    grade: string;
+    subject: string;
+    questions: Question[];
+    createdAt: string;
 }
 
 export interface GradeData {
