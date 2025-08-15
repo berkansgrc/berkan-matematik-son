@@ -5,10 +5,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CourseData, GradeSlug, Resource, ResourceCategory, Subject } from '@/lib/data';
 import { grades } from '@/lib/data';
-import { getCourseData } from '@/lib/course-actions';
+import { getCourseData, updateCourseData, deleteCourseItem } from '@/lib/course-actions';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, collection, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -19,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { doc, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type DialogMode = 'addSubject' | 'editSubject' | 'addResource' | 'editResource';
 
@@ -31,12 +31,8 @@ type DialogState = {
   category?: ResourceCategory;
 }
 
-const COURSE_COLLECTION = 'courseData';
-const SINGLE_DOCUMENT_ID = 'allGrades';
-
 export function AdminClient() {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const [data, setData] = useState<CourseData | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const { toast } = useToast();
@@ -82,33 +78,29 @@ export function AdminClient() {
   }
 
   const handleSave = async () => {
-    if (user?.role !== 'admin' || !dialogState.grade) {
+    if (user?.role !== 'admin' || !dialogState.grade || !data) {
       toast({ title: "Hata", description: "Bu işlem için yetkiniz yok veya veri yüklenmemiş.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     
     const { mode, grade, subject, resource, category } = dialogState;
+    const currentData = { ...data };
+    let updatedSubjects = [...(currentData[grade]?.subjects ?? [])];
 
     try {
-      const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) throw new Error("Course data document not found.");
-
-      const fullData = docSnap.data() as CourseData;
-      let updatedSubjects = [...fullData[grade].subjects]; // Create a mutable copy of subjects for the specific grade
-
+      let toastMessage = "";
       switch(mode) {
           case 'addSubject': {
               const newSubject: Subject = { id: doc(collection(db, '_')).id, title: currentTitle, videos: [], documents: [], applications: [] };
               updatedSubjects.push(newSubject);
-              toast({ title: "Başarılı", description: "Yeni konu eklendi." });
+              toastMessage = "Yeni konu eklendi.";
               break;
           }
           case 'editSubject': {
               if (!subject) throw new Error("Konu bulunamadı.");
               updatedSubjects = updatedSubjects.map(s => s.id === subject.id ? { ...s, title: currentTitle } : s);
-              toast({ title: "Başarılı", description: "Konu güncellendi." });
+              toastMessage = "Konu güncellendi.";
               break;
           }
           case 'addResource': {
@@ -121,7 +113,7 @@ export function AdminClient() {
                   }
                   return s;
               });
-              toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
+              toastMessage = "Yeni kaynak eklendi.";
               break;
           }
           case 'editResource': {
@@ -133,13 +125,15 @@ export function AdminClient() {
                   }
                   return s;
               });
-              toast({ title: "Başarılı", description: "Kaynak güncellendi." });
+              toastMessage = "Kaynak güncellendi.";
               break;
           }
       }
 
-      await updateDoc(docRef, { [`${grade}.subjects`]: updatedSubjects });
-      
+      // Update Firestore via Server Action
+      await updateCourseData(grade, updatedSubjects);
+
+      // Optimistic UI Update
       setData(prevData => {
           if (!prevData) return null;
           return {
@@ -150,7 +144,8 @@ export function AdminClient() {
               }
           };
       });
-
+      
+      toast({ title: "Başarılı", description: toastMessage });
       handleCloseDialog();
 
     } catch (error: any) {
@@ -168,31 +163,29 @@ export function AdminClient() {
     }
     
     try {
-        const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) throw new Error("Course data document not found.");
-
-        const fullData = docSnap.data() as CourseData;
-        let updatedSubjects = [...fullData[grade].subjects];
+        let updatedSubjects: Subject[];
+        let toastMessage = "";
 
         if (resourceToDelete && subjectToDelete && category) { // Delete a resource
-            updatedSubjects = updatedSubjects.map(s => {
+            updatedSubjects = data[grade].subjects.map(s => {
                 if (s.id === subjectToDelete.id) {
                     const newCategoryList = s[category].filter(r => r.id !== resourceToDelete.id);
                     return { ...s, [category]: newCategoryList };
                 }
                 return s;
             });
-            toast({ title: "Başarılı", description: "Kaynak silindi." });
+            toastMessage = "Kaynak silindi.";
         } else if (subjectToDelete) { // Delete a subject
             if (subjectToDelete.videos.length > 0 || subjectToDelete.documents.length > 0 || subjectToDelete.applications.length > 0) {
                 if (!confirm("Bu konunun içinde kaynaklar var. Konuyu silerseniz içindeki tüm kaynaklar da silinir. Emin misiniz?")) return;
             }
-            updatedSubjects = updatedSubjects.filter((s: Subject) => s.id !== subjectToDelete.id);
-            toast({ title: "Başarılı", description: "Konu ve içindeki tüm kaynaklar silindi." });
+            updatedSubjects = data[grade].subjects.filter((s: Subject) => s.id !== subjectToDelete.id);
+            toastMessage = "Konu ve içindeki tüm kaynaklar silindi.";
+        } else {
+            throw new Error("Silinecek öğe belirtilmedi.");
         }
 
-        await updateDoc(docRef, { [`${grade}.subjects`]: updatedSubjects });
+        await deleteCourseItem(grade, updatedSubjects);
 
         setData(prevData => {
             if (!prevData) return null;
@@ -204,6 +197,8 @@ export function AdminClient() {
                 }
             };
         });
+
+        toast({ title: "Başarılı", description: toastMessage });
 
     } catch (error: any) {
         console.error("Failed to delete:", error);
@@ -371,7 +366,3 @@ function ResourceColumn({ title, icon, category, resources, onAdd, onEdit, onDel
         </Card>
     )
 }
-
-    
-
-    
