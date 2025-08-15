@@ -1,10 +1,9 @@
 
 import { AdminClient } from './admin-client';
-import { getCourseData } from '@/lib/course-actions';
 
-export default async function AdminPage() {
-  const initialCourseData = await getCourseData();
-
+export default function AdminPage() {
+  // The AdminClient component now fetches its own data.
+  // We no longer need to fetch it here and pass it as a prop.
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <header className="mb-8">
@@ -13,7 +12,9 @@ export default async function AdminPage() {
           Sınıflara göre ders kaynaklarını (video, döküman, uygulama) buradan yönetin.
         </p>
       </header>
-      <AdminClient initialData={initialCourseData} />
+      <AdminClient />
     </div>
   );
 }
+
+    

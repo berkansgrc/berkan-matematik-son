@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CourseData, GradeSlug, Resource, ResourceCategory, Subject } from '@/lib/data';
 import { grades } from '@/lib/data';
@@ -20,10 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Edit, Trash2, Loader2, FileText, Video, AppWindow, BookOpen, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-type AdminClientProps = {
-  initialData: CourseData;
-}
-
 type DialogMode = 'addSubject' | 'editSubject' | 'addResource' | 'editResource';
 
 type DialogState = {
@@ -38,10 +34,11 @@ type DialogState = {
 const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
 
-export function AdminClient({ initialData }: AdminClientProps) {
+// This is a client component that fetches its own data.
+export function AdminClient() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<CourseData>(initialData);
+  const [data, setData] = useState<CourseData | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const { toast } = useToast();
   
@@ -58,17 +55,22 @@ export function AdminClient({ initialData }: AdminClientProps) {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    setData(initialData);
-    setIsDataLoading(false);
-  }, [initialData]);
-
-  const refreshData = async () => {
+  const fetchData = useCallback(async () => {
     setIsDataLoading(true);
-    const updatedData = await getCourseData();
-    setData(updatedData);
-    setIsDataLoading(false);
-  };
+    try {
+      const courseData = await getCourseData();
+      setData(courseData);
+    } catch (error) {
+      console.error("Failed to fetch initial data", error);
+      toast({ title: "Veri Yükleme Hatası", description: "Ders verileri yüklenemedi.", variant: "destructive" });
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
   const handleOpenDialog = (mode: DialogMode, grade: GradeSlug, subject?: Subject, category?: ResourceCategory, resource?: Resource) => {
     setDialogState({ isOpen: true, mode, grade, subject, category, resource });
@@ -84,102 +86,102 @@ export function AdminClient({ initialData }: AdminClientProps) {
     setDialogState({ isOpen: false, mode: null, grade: null });
     setCurrentTitle('');
     setCurrentUrl('');
+    setIsSubmitting(false);
   }
 
   const handleSave = async () => {
-    if (user?.role !== 'admin') {
-      toast({ title: "Hata", description: "Bu işlem için yetkiniz yok.", variant: "destructive" });
+    if (user?.role !== 'admin' || !data) {
+      toast({ title: "Hata", description: "Bu işlem için yetkiniz yok veya veri yüklenmemiş.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     
     const { mode, grade, subject, resource, category } = dialogState;
+    if (!grade) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Create a deep copy to avoid direct state mutation before DB operation
+    let updatedData = JSON.parse(JSON.stringify(data));
+    let gradeData = updatedData[grade];
 
     try {
-        const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-        const docSnap = await getDoc(docRef);
-        const currentData = docSnap.exists() ? docSnap.data() as CourseData : initialData;
-
-        if (!grade) throw new Error("Sınıf seçimi yapılmadı.");
-
-        let gradeData = JSON.parse(JSON.stringify(currentData[grade] ?? initialData[grade]));
+      const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
         
-        switch(mode) {
-            case 'addSubject':
-                const newSubject: Subject = { id: doc(collection(db, '_')).id, title: currentTitle, videos: [], documents: [], applications: [] };
-                gradeData.subjects.push(newSubject);
-                toast({ title: "Başarılı", description: "Yeni konu eklendi." });
-                break;
-            
-            case 'editSubject':
-                if (!subject) throw new Error("Konu bulunamadı.");
-                gradeData.subjects = gradeData.subjects.map((s: Subject) => s.id === subject.id ? { ...s, title: currentTitle } : s);
-                toast({ title: "Başarılı", description: "Konu güncellendi." });
-                break;
-            
-            case 'addResource':
-                if (!subject || !category) throw new Error("Konu veya kategori bulunamadı.");
-                const newResource: Resource = { id: doc(collection(db, '_')).id, title: currentTitle, url: currentUrl, createdAt: new Date().toISOString() };
-                gradeData.subjects = gradeData.subjects.map((s: Subject) => {
-                    if (s.id === subject.id) {
-                        // Ensure category array exists
-                        if (!s[category]) s[category] = [];
-                        return { ...s, [category]: [...s[category], newResource] };
-                    }
-                    return s;
-                });
-                toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
-                break;
+      switch(mode) {
+          case 'addSubject': {
+              const newSubject: Subject = { id: doc(collection(db, '_')).id, title: currentTitle, videos: [], documents: [], applications: [] };
+              gradeData.subjects.push(newSubject);
+              toast({ title: "Başarılı", description: "Yeni konu eklendi." });
+              break;
+          }
+          case 'editSubject': {
+              if (!subject) throw new Error("Konu bulunamadı.");
+              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
+              if (subjectIndex > -1) {
+                  gradeData.subjects[subjectIndex].title = currentTitle;
+              }
+              toast({ title: "Başarılı", description: "Konu güncellendi." });
+              break;
+          }
+          case 'addResource': {
+              if (!subject || !category) throw new Error("Konu veya kategori bulunamadı.");
+              const newResource: Resource = { id: doc(collection(db, '_')).id, title: currentTitle, url: currentUrl, createdAt: new Date().toISOString() };
+              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
+              if (subjectIndex > -1) {
+                  if (!gradeData.subjects[subjectIndex][category]) gradeData.subjects[subjectIndex][category] = [];
+                  gradeData.subjects[subjectIndex][category].push(newResource);
+              }
+              toast({ title: "Başarılı", description: "Yeni kaynak eklendi." });
+              break;
+          }
+          case 'editResource': {
+              if (!subject || !category || !resource) throw new Error("Konu, kategori veya kaynak bulunamadı.");
+              const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subject.id);
+              if (subjectIndex > -1) {
+                  const resourceIndex = gradeData.subjects[subjectIndex][category].findIndex((r: Resource) => r.id === resource.id);
+                  if (resourceIndex > -1) {
+                      gradeData.subjects[subjectIndex][category][resourceIndex] = { ...resource, title: currentTitle, url: currentUrl };
+                  }
+              }
+              toast({ title: "Başarılı", description: "Kaynak güncellendi." });
+              break;
+          }
+      }
 
-            case 'editResource':
-                if (!subject || !category || !resource) throw new Error("Konu, kategori veya kaynak bulunamadı.");
-                 gradeData.subjects = gradeData.subjects.map((s: Subject) => {
-                    if (s.id === subject.id) {
-                       const updatedCategoryResources = s[category].map((r: Resource) => r.id === resource.id ? { ...r, title: currentTitle, url: currentUrl } : r);
-                       return { ...s, [category]: updatedCategoryResources };
-                    }
-                    return s;
-                });
-                toast({ title: "Başarılı", description: "Kaynak güncellendi." });
-                break;
-        }
+      await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
+      
+      // Update state directly instead of refetching
+      setData(updatedData);
+      handleCloseDialog();
 
-        // Use a batch to ensure atomicity, or simply update the specific field path
-        await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
-        
-        handleCloseDialog();
-        await refreshData();
     } catch (error: any) {
         console.error("Failed to save:", error);
         toast({ title: "Hata", description: error.message || "İşlem sırasında bir hata oluştu.", variant: "destructive" });
-    } finally {
-        setIsSubmitting(false);
+        setIsSubmitting(false); // Only set to false on error
     }
   }
 
   const handleDelete = async (grade: GradeSlug, subjectToDelete?: Subject, category?: ResourceCategory, resourceToDelete?: Resource) => {
      if (!confirm(`Bu ${resourceToDelete ? 'kaynağı' : 'konuyu'} silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) return;
-     if (user?.role !== 'admin') {
-        toast({ title: "Hata", description: "Bu işlem için yetkiniz yok.", variant: "destructive" });
+     if (user?.role !== 'admin' || !data) {
+        toast({ title: "Hata", description: "Bu işlem için yetkiniz yok veya veri yüklenmemiş.", variant: "destructive" });
         return;
     }
+    
+    // Create a deep copy to avoid direct state mutation before DB operation
+    let updatedData = JSON.parse(JSON.stringify(data));
+    let gradeData = updatedData[grade];
 
     try {
       const docRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) throw new Error("Veritabanı dökümanı bulunamadı.");
-      
-      const currentData = docSnap.data() as CourseData;
-      let gradeData = JSON.parse(JSON.stringify(currentData[grade]));
       
       if (resourceToDelete && subjectToDelete && category) { // Delete a resource
-        gradeData.subjects = gradeData.subjects.map((s: Subject) => {
-            if (s.id === subjectToDelete.id) {
-                const updatedCategory = s[category].filter((r: Resource) => r.id !== resourceToDelete.id);
-                return { ...s, [category]: updatedCategory };
-            }
-            return s;
-        });
+        const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === subjectToDelete.id);
+        if (subjectIndex > -1) {
+            gradeData.subjects[subjectIndex][category] = gradeData.subjects[subjectIndex][category].filter((r: Resource) => r.id !== resourceToDelete.id);
+        }
         toast({ title: "Başarılı", description: "Kaynak silindi." });
       } else if (subjectToDelete) { // Delete a subject
          if (subjectToDelete.videos.length > 0 || subjectToDelete.documents.length > 0 || subjectToDelete.applications.length > 0) {
@@ -190,7 +192,8 @@ export function AdminClient({ initialData }: AdminClientProps) {
       }
 
       await updateDoc(docRef, { [`${grade}.subjects`]: gradeData.subjects });
-      await refreshData();
+      // Update state directly instead of refetching
+      setData(updatedData);
 
     } catch (error: any) {
       console.error("Failed to delete:", error);
@@ -198,7 +201,7 @@ export function AdminClient({ initialData }: AdminClientProps) {
     }
   }
 
-  if (authLoading || !user || user.role !== 'admin') {
+  if (authLoading || !user || user.role !== 'admin' || !data) {
       return (
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 flex justify-center items-center h-screen">
               <Loader2 className="mr-2 h-8 w-8 animate-spin" />

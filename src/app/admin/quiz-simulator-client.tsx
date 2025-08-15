@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { generateQuiz, type Quiz as AIGeneratedQuiz } from '@/ai/flows/quiz-generator-flow';
 import type { CourseData, GradeSlug, Quiz, Resource, Subject } from '@/lib/data';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Wand2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from '@/components/ui/textarea';
+import { grades } from '@/lib/data';
 
 type QuizSimulatorClientProps = {
     courseData: CourseData;
@@ -25,7 +26,7 @@ const COURSE_COLLECTION = 'courseData';
 const SINGLE_DOCUMENT_ID = 'allGrades';
 const QUIZZES_COLLECTION = 'quizzes';
 
-export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
+export function QuizSimulatorClient({ courseData: initialCourseData }: QuizSimulatorClientProps) {
   const [topic, setTopic] = useState('');
   const [prompt, setPrompt] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<GradeSlug | ''>('');
@@ -35,14 +36,16 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
   const [generatedQuiz, setGeneratedQuiz] = useState<AIGeneratedQuiz | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  // We manage the course data in state to allow optimistic updates
+  const [courseData, setCourseData] = useState<CourseData>(initialCourseData);
 
   const subjectsForSelectedGrade = useMemo(() => {
-    if (!selectedGrade) return [];
+    if (!selectedGrade || !courseData) return [];
     return courseData[selectedGrade].subjects;
   }, [selectedGrade, courseData]);
 
   const handleGenerateQuiz = async () => {
-    if (!topic || !selectedGrade) {
+    if (!topic || !selectedGrade || !courseData) {
         setError("Lütfen bir konu başlığı girin ve bir sınıf seçin.");
         return;
     }
@@ -64,60 +67,72 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
   };
 
   const handleSaveQuiz = async () => {
-    if (!generatedQuiz || !selectedGrade || !selectedSubject) {
+    if (!generatedQuiz || !selectedGrade || !selectedSubject || !courseData) {
         toast({ title: "Hata", description: "Kaydedilecek test, sınıf veya konu bulunamadı.", variant: "destructive"});
         return;
     }
     setIsSaving(true);
+
+    const subjectData = subjectsForSelectedGrade.find(s => s.id === selectedSubject);
+    if (!subjectData) {
+        toast({ title: "Hata", description: "Seçilen ders konusu bulunamadı.", variant: "destructive"});
+        setIsSaving(false);
+        return;
+    }
+
+    const quizToSave: Quiz = {
+        id: uuidv4(),
+        title: `${topic} Testi`,
+        grade: courseData[selectedGrade].name,
+        subject: subjectData.title,
+        questions: generatedQuiz.questions.map(q => ({...q, id: uuidv4()})),
+        createdAt: new Date().toISOString(),
+    };
+    
+    const quizResource: Resource = {
+        id: quizToSave.id,
+        title: quizToSave.title,
+        url: `/quiz/${quizToSave.id}`,
+        createdAt: quizToSave.createdAt,
+    };
+
     try {
-        const subjectData = subjectsForSelectedGrade.find(s => s.id === selectedSubject);
-        if (!subjectData) {
-            throw new Error("Seçilen ders konusu bulunamadı.");
-        }
-
-        const quizToSave: Quiz = {
-            id: uuidv4(),
-            title: `${topic} Testi`,
-            grade: courseData[selectedGrade].name,
-            subject: subjectData.title,
-            questions: generatedQuiz.questions.map(q => ({...q, id: uuidv4()})),
-            createdAt: new Date().toISOString(),
-        };
-
         // 1. Save the quiz to its own collection
         const quizDocRef = doc(db, QUIZZES_COLLECTION, quizToSave.id);
-        await setDoc(quizDocRef, quizToSave);
-
-        // 2. Create the resource link
-        const quizResource: Resource = {
-            id: quizToSave.id,
-            title: quizToSave.title,
-            url: `/quiz/${quizToSave.id}`,
-            createdAt: quizToSave.createdAt,
-        };
-
-        // 3. Add the resource link to the course data document
+        
+        // 2. Add the resource link to the course data document
         const courseDocRef = doc(db, COURSE_COLLECTION, SINGLE_DOCUMENT_ID);
+
+        // We could use a batch write here for atomicity
+        await setDoc(quizDocRef, quizToSave);
+        // To be safer, we should read the document first, but for this operation, we assume we can just append.
         const courseDocSnap = await getDoc(courseDocRef);
+        if (!courseDocSnap.exists()) throw new Error('Ana ders dökümanı bulunamadı.');
 
-        if (!courseDocSnap.exists()) {
-            throw new Error('Ana ders dökümanı bulunamadı.');
-        }
         const currentCourseData = courseDocSnap.data() as CourseData;
-        const gradeData = JSON.parse(JSON.stringify(currentCourseData[selectedGrade]));
-
+        const gradeData = currentCourseData[selectedGrade];
         const subjectIndex = gradeData.subjects.findIndex((s: Subject) => s.id === selectedSubject);
         if (subjectIndex === -1) {
             throw new Error(`Ders konusu (ID: ${selectedSubject}) ${selectedGrade} sınıfında bulunamadı.`);
         }
-
-        gradeData.subjects[subjectIndex].applications.push(quizResource);
-
-        // Update only the specific grade's data
+        
+        const updatedApplications = [...(gradeData.subjects[subjectIndex].applications || []), quizResource];
+        
         await updateDoc(courseDocRef, {
-            [selectedGrade]: gradeData
+            [`${selectedGrade}.subjects.${subjectIndex}.applications`]: updatedApplications
         });
 
+        // Optimistic UI update
+        setCourseData(prevData => {
+            const newData = JSON.parse(JSON.stringify(prevData));
+            const gradeToUpdate = newData[selectedGrade];
+            const subjectToUpdate = gradeToUpdate.subjects.find((s: Subject) => s.id === selectedSubject);
+            if(subjectToUpdate) {
+                if(!subjectToUpdate.applications) subjectToUpdate.applications = [];
+                subjectToUpdate.applications.push(quizResource);
+            }
+            return newData;
+        });
 
         toast({
             title: "Başarılı!",
@@ -169,8 +184,8 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
                 <SelectValue placeholder="Sınıf seçin" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(courseData).map(([slug, grade]) => (
-                  <SelectItem key={slug} value={slug}>{grade.name}</SelectItem>
+                {grades.map(grade => (
+                  <SelectItem key={grade.slug} value={grade.slug}>{grade.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -256,3 +271,5 @@ export function QuizSimulatorClient({ courseData }: QuizSimulatorClientProps) {
     </Card>
   );
 }
+
+    
